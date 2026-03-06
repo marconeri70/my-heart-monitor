@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* CSS Variables per supportare il Tema Chiaro e Scuro */
         :root { 
             --primary: #e63946; --secondary: #457b9d; 
             --bg: #f8f9fa; --surface: #ffffff; --text: #1d3557; 
@@ -36,6 +35,7 @@
         input { width: 100%; padding: 12px; margin: 5px 0 15px 0; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: var(--input-bg); color: var(--text); }
         button { width: 100%; padding: 14px; margin: 10px 0; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3); }
         button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-secondary { background-color: var(--secondary); box-shadow: 0 2px 4px rgba(69, 123, 157, 0.3); }
         .btn-export { background-color: var(--normale); box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); margin-top:0;}
         .btn-danger { background-color: #d90429; box-shadow: 0 2px 4px rgba(217, 4, 41, 0.3); margin-top:0;}
@@ -83,7 +83,7 @@
         </div>
         <label style="font-size: 12px; font-weight: bold; color: #888;">Battiti (BPM)</label>
         <input type="number" id="bpm" placeholder="es. 70">
-        <button onclick="inviaDati()">Salva Dati</button>
+        <button id="btn-salva" onclick="inviaDati()">Salva Dati</button>
         <p id="status"></p>
     </div>
 
@@ -103,7 +103,7 @@
 
     <div class="card">
         <h2>📋 Archivio con Tendenze</h2>
-        <button class="btn-secondary" onclick="caricaStorico()">🔄 Sincronizza Dati</button>
+        <button id="btn-sync" class="btn-secondary" onclick="caricaStorico()">🔄 Sincronizza Dati</button>
         
         <div class="grid-2" style="margin-top: 10px;">
             <button class="btn-export" onclick="scaricaWord()">📄 Esporta Medico</button>
@@ -140,11 +140,16 @@
             const dia = parseInt(document.getElementById('dia').value);
             const bpm = parseInt(document.getElementById('bpm').value) || 0;
             const statusEl = document.getElementById('status');
+            const btnSalva = document.getElementById('btn-salva');
 
             if (!user || !repo || !token) { statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
             if (!sis || !dia) { statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
-            statusEl.innerText = '⏳ Salvataggio...';
+            // Blocca il pulsante per evitare invii doppi
+            btnSalva.disabled = true;
+            btnSalva.innerText = '⏳ Invio in corso...';
+            statusEl.innerText = '';
+
             let label = "🟢 Normale";
             if (sis >= 135 || dia >= 85) label = "🔴 Alta";
             else if (sis <= 90 || dia <= 60) label = "🟡 Bassa";
@@ -165,9 +170,15 @@
                     statusEl.innerText = '✅ Salvato!';
                     document.getElementById('sis').value = ''; document.getElementById('dia').value = ''; document.getElementById('bpm').value = '';
                     setTimeout(() => { statusEl.innerText = ''; }, 3000);
-                    caricaStorico(); 
+                    await caricaStorico(); // Ricarica lo storico automaticamente
                 } else { statusEl.innerText = `❌ Errore API`; }
-            } catch (error) { statusEl.innerText = `❌ Errore di Rete`; }
+            } catch (error) { 
+                statusEl.innerText = `❌ Errore di Rete`; 
+            } finally {
+                // Sblocca il pulsante
+                btnSalva.disabled = false;
+                btnSalva.innerText = 'Salva Dati';
+            }
         }
 
         async function caricaStorico() {
@@ -175,13 +186,25 @@
             const repo = localStorage.getItem('gh_repo');
             const token = localStorage.getItem('gh_token');
             const listaEl = document.getElementById('lista-storico');
+            const btnSync = document.getElementById('btn-sync');
 
             if (!user || !token) return;
-            listaEl.innerHTML = '<em>Sincronizzazione da GitHub... ⏳</em>';
+            
+            // Blocca il pulsante e mostra il caricamento
+            btnSync.disabled = true;
+            btnSync.innerText = '⏳ Sincronizzazione...';
+            listaEl.innerHTML = '<em>Scaricamento dati freschi da GitHub... ⏳</em>';
 
             try {
-                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100`, {
-                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+                // IL TRUCCHETTO: Aggiungiamo il timestamp corrente (?t=...) per ingannare la cache del browser!
+                const timestamp = new Date().getTime();
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${timestamp}`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`, 
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate', // Forza il ricaricamento
+                        'Pragma': 'no-cache'
+                    }
                 });
                 
                 if (!response.ok) throw new Error("Errore API");
@@ -205,7 +228,6 @@
                     const bpm = matchBpm ? parseInt(matchBpm[1]) : 0;
 
                     if(max > 0 && min > 0) {
-                        // Importante: salviamo il numero della issue per poterla azzerare
                         appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
                         sumMax += max; sumMin += min;
                         
@@ -221,10 +243,11 @@
                     document.getElementById('avg-min').innerText = '-';
                     if(lineChartInstance) lineChartInstance.destroy();
                     if(pieChartInstance) pieChartInstance.destroy();
+                    btnSync.disabled = false;
+                    btnSync.innerText = '🔄 Sincronizza Dati';
                     return;
                 }
 
-                // Ordina per calcolare le tendenze (dal più recente al più vecchio)
                 appData.sort((a, b) => b.rawDate - a.rawDate);
                 
                 let htmlContent = '';
@@ -262,7 +285,13 @@
 
                 disegnaGrafici(conteggio);
 
-            } catch (error) { listaEl.innerHTML = '❌ Errore caricamento.'; }
+            } catch (error) { 
+                listaEl.innerHTML = '❌ Errore caricamento.'; 
+            } finally {
+                // Sblocca il pulsante alla fine
+                btnSync.disabled = false;
+                btnSync.innerText = '🔄 Sincronizza Dati';
+            }
         }
 
         function disegnaGrafici(conteggio) {
@@ -307,7 +336,6 @@
             });
         }
 
-        // --- FUNZIONE AZZERA RIPRISTINATA ---
         async function azzeraArchivio() {
             if (appData.length === 0) return;
             const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio? \nL'operazione chiuderà i record correnti e ripartirai da zero.");
