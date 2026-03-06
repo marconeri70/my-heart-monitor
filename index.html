@@ -273,25 +273,27 @@
             }
         }
 
-        // --- NUOVA FUNZIONE: ESPORTA UN VERO PDF ---
         function scaricaPDF() {
             if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
 
-            // Cambiamo testo al pulsante durante il caricamento
             const btn = document.querySelector('.btn-export');
-            const originalText = btn.innerText;
             btn.innerText = "⏳ Creazione PDF...";
 
-            // Creiamo un contenitore invisibile per impaginare il PDF
             const reportDiv = document.createElement('div');
+            // AGGIUNTO: Fissiamo le dimensioni e lo mettiamo nel DOM di nascosto
+            reportDiv.style.width = '800px'; 
             reportDiv.style.padding = '30px';
             reportDiv.style.fontFamily = 'Helvetica, Arial, sans-serif';
             reportDiv.style.color = '#1d3557';
+            reportDiv.style.background = 'white';
+            reportDiv.style.position = 'absolute';
+            reportDiv.style.top = '-9999px'; // Fuori dallo schermo!
+            document.body.appendChild(reportDiv);
 
             const avgMax = document.getElementById('avg-max').innerText;
             const avgMin = document.getElementById('avg-min').innerText;
             const canvas = document.getElementById('myChart');
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/png', 1.0);
 
             let tableHTML = `
                 <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; margin-top: 20px;">
@@ -306,7 +308,6 @@
             const exportData = [...appData].sort((a, b) => b.rawDate - a.rawDate);
             exportData.forEach(row => {
                 let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                // Tolgo l'emoji dalla parola per evitare "geroglifici" nel PDF
                 let labelPulita = row.label.replace(/[^a-zA-Z\s]/g, '').trim(); 
                 
                 tableHTML += `
@@ -343,18 +344,22 @@
                 ${tableHTML}
             `;
 
-            // Configurazione della libreria html2pdf
+            // AGGIUNTO: scrollY: 0 per forzare la partenza dalla cima esatta
             const opt = {
                 margin:       10,
                 filename:     `Referto_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, scrollY: 0, windowWidth: 800 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Genera e scarica
             html2pdf().set(opt).from(reportDiv).save().then(() => {
-                btn.innerText = "📄 Scarica PDF"; // Rimette il testo normale
+                btn.innerText = "📄 Scarica PDF"; 
+                document.body.removeChild(reportDiv); // Puliamo il documento nascosto
+            }).catch(err => {
+                btn.innerText = "📄 Scarica PDF";
+                document.body.removeChild(reportDiv);
+                alert("Errore nella generazione del PDF");
             });
         }
     </script>
