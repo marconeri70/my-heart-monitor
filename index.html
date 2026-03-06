@@ -20,7 +20,6 @@
             --normale: #2a9d8f; --alta: #e63946; --bassa: #e9c46a;
         }
 
-        /* Regole per la Dark Mode automatica */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #121212; --surface: #1e1e1e; --text: #e0e0e0; 
@@ -38,7 +37,8 @@
         button { width: 100%; padding: 14px; margin: 10px 0; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3); }
         button:active { transform: scale(0.98); }
         .btn-secondary { background-color: var(--secondary); box-shadow: 0 2px 4px rgba(69, 123, 157, 0.3); }
-        .btn-export { background-color: var(--normale); box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); }
+        .btn-export { background-color: var(--normale); box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); margin-top:0;}
+        .btn-danger { background-color: #d90429; box-shadow: 0 2px 4px rgba(217, 4, 41, 0.3); margin-top:0;}
         h2 { font-size: 18px; margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;}
         #status { font-weight: bold; text-align: center; margin-top: 5px; font-size: 14px;}
         .report-item { border-left: 4px solid var(--border); padding: 12px 15px; margin-bottom: 10px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 14px; position: relative;}
@@ -104,7 +104,11 @@
     <div class="card">
         <h2>📋 Archivio con Tendenze</h2>
         <button class="btn-secondary" onclick="caricaStorico()">🔄 Sincronizza Dati</button>
-        <button class="btn-export" onclick="scaricaWord()">📄 Esporta per Medico</button>
+        
+        <div class="grid-2" style="margin-top: 10px;">
+            <button class="btn-export" onclick="scaricaWord()">📄 Esporta Medico</button>
+            <button class="btn-danger" onclick="azzeraArchivio()">🗑️ Azzera Tutto</button>
+        </div>
 
         <div id="lista-storico" style="margin-top: 15px;"></div>
     </div>
@@ -201,7 +205,8 @@
                     const bpm = matchBpm ? parseInt(matchBpm[1]) : 0;
 
                     if(max > 0 && min > 0) {
-                        appData.push({ data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
+                        // Importante: salviamo il numero della issue per poterla azzerare
+                        appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
                         sumMax += max; sumMin += min;
                         
                         if (labelName.includes('Alta')) conteggio.alta++;
@@ -211,7 +216,11 @@
                 });
 
                 if (appData.length === 0) {
-                    listaEl.innerHTML = 'Nessuna misurazione trovata.';
+                    listaEl.innerHTML = 'Nessuna misurazione trovata. Inizia a misurare!';
+                    document.getElementById('avg-max').innerText = '-';
+                    document.getElementById('avg-min').innerText = '-';
+                    if(lineChartInstance) lineChartInstance.destroy();
+                    if(pieChartInstance) pieChartInstance.destroy();
                     return;
                 }
 
@@ -222,7 +231,6 @@
                 appData.forEach((row, index) => {
                     let color = row.label.includes('Alta') ? 'var(--alta)' : (row.label.includes('Bassa') ? 'var(--bassa)' : 'var(--normale)');
                     
-                    // Calcolo della Tendenza (Trend) rispetto alla misurazione precedente
                     let trendHTML = '';
                     if (index < appData.length - 1) {
                         const prev = appData[index + 1];
@@ -258,20 +266,17 @@
         }
 
         function disegnaGrafici(conteggio) {
-            // Inverte i dati per il grafico a linee (dal vecchio al nuovo)
             const chartData = [...appData].reverse();
             const labels = chartData.map(d => d.data.split(',')[0]); 
             const dataMax = chartData.map(d => d.max);
             const dataMin = chartData.map(d => d.min);
 
-            // Stile grafico in base al tema scuro o chiaro
             const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             const gridColor = isDark ? '#333' : '#e9ecef';
             const textColor = isDark ? '#e0e0e0' : '#1d3557';
 
             Chart.defaults.color = textColor;
 
-            // 1. Grafico a Linee
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             if(lineChartInstance) lineChartInstance.destroy(); 
             lineChartInstance = new Chart(ctxLine, {
@@ -283,10 +288,9 @@
                         { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 }
                     ]
                 },
-                options: { scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } }
+                options: { animation: { duration: 0 }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } }
             });
 
-            // 2. Nuovo Grafico a Ciambella
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             if(pieChartInstance) pieChartInstance.destroy();
             pieChartInstance = new Chart(ctxPie, {
@@ -303,9 +307,38 @@
             });
         }
 
+        // --- FUNZIONE AZZERA RIPRISTINATA ---
+        async function azzeraArchivio() {
+            if (appData.length === 0) return;
+            const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio? \nL'operazione chiuderà i record correnti e ripartirai da zero.");
+            if (!conferma) return;
+
+            const user = localStorage.getItem('gh_user');
+            const repo = localStorage.getItem('gh_repo');
+            const token = localStorage.getItem('gh_token');
+            const listaEl = document.getElementById('lista-storico');
+
+            listaEl.innerHTML = '<em>Azzeramento in corso... non chiudere l\'app. ⏳</em>';
+
+            try {
+                for (let record of appData) {
+                    await fetch(`https://api.github.com/repos/${user}/${repo}/issues/${record.number}`, {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ state: 'closed' })
+                    });
+                }
+                alert("✅ Archivio azzerato con successo!");
+                caricaStorico(); 
+            } catch (error) {
+                alert("❌ Errore durante l'azzeramento.");
+                caricaStorico();
+            }
+        }
+
         function scaricaWord() {
             if(appData.length === 0) return;
-            // (La funzione di export rimane identica a quella di prima, sicura e funzionante)
+            
             const canvas = document.getElementById('lineChart');
             const imgData = canvas.toDataURL('image/png');
             let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Esito</th></tr>`;
