@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Heart Monitor GH</title>
+    <script src="https://cdn.jsdelivr.net/npm/octokit@3.1.2/dist-bundle/index.umd.min.js"></script>
+</head>
+<body>
+    <h1>Inserisci Pressione</h1>
+    <input type="number" id="sis" placeholder="Sistolica (es. 120)">
+    <input type="number" id="dia" placeholder="Diastolica (es. 80)">
+    <button onclick="salvaDati()">Invia a GitHub</button>
+
+    <script>
+        async function salvaDati() {
+            const sis = document.getElementById('sis').value;
+            const dia = document.getElementById('dia').value;
+            
+            // Qui useremo un Personal Access Token (PAT) per comunicare con GitHub
+            // Nota: Per sicurezza, useremo GitHub Actions per gestire i permessi più avanti
+            alert(`Dati pronti per l'invio: ${sis}/${dia}`);
+        }
+    </script>
+</body>
+</html>
