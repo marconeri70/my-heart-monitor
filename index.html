@@ -95,7 +95,7 @@
         <canvas id="lineChart"></canvas>
         
         <h3 style="font-size: 14px; color: #888; text-align: center; margin-top: 25px; margin-bottom: 0;">Distribuzione Valori</h3>
-        <canvas id="pieChart" style="max-height: 200px;"></canvas>
+        <canvas id="pieChart" style="max-height: 250px;"></canvas>
     </div>
 
     <div class="card">
@@ -158,7 +158,8 @@
             statusEl.innerText = '';
 
             let label = "🟢 Normale";
-            if (sis >= 135 || dia >= 85) label = "🔴 Alta";
+            // NUOVA SOGLIA: Scatta Alta solo se MAX è 140+ o MIN è 90+
+            if (sis >= 140 || dia >= 90) label = "🔴 Alta";
             else if (sis <= 90 || dia <= 60) label = "🟡 Bassa";
 
             const data = new Date();
@@ -206,7 +207,6 @@
 
             try {
                 const timestamp = new Date().getTime();
-                // Rimosse le istruzioni Cache-Control che bloccavano la connessione
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${timestamp}`, {
                     headers: { 
                         'Authorization': `Bearer ${token}`, 
@@ -229,6 +229,7 @@
                 issues.forEach(issue => {
                     if (issue.pull_request) return; 
                     
+                    // Controlliamo il testo del label per assicurarci che usi le nuove soglie anche per il conteggio grafico
                     const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
                     const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
                     const bodyText = issue.body || ""; 
@@ -247,8 +248,9 @@
                         appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, nota: notaText, label: labelName, rawDate: new Date(issue.created_at) });
                         sumMax += max; sumMin += min;
                         
-                        if (labelName.includes('Alta')) conteggio.alta++;
-                        else if (labelName.includes('Bassa')) conteggio.bassa++;
+                        // Per il grafico a torta ricontrolliamo i valori reali per non essere ingannati da vecchie etichette salvate
+                        if (max >= 140 || min >= 90) conteggio.alta++;
+                        else if (max <= 90 || min <= 60) conteggio.bassa++;
                         else conteggio.normale++;
                     }
                 });
@@ -274,7 +276,7 @@
                     if (index < appData.length - 1) {
                         const prev = appData[index + 1];
                         const diffMax = row.max - prev.max;
-                        if (diffMax > 0) trendHTML = `<span class="trend ${row.max >= 135 ? 'up-bad' : 'up-good'}">MAX ↑ +${diffMax}</span>`;
+                        if (diffMax > 0) trendHTML = `<span class="trend ${row.max >= 140 ? 'up-bad' : 'up-good'}">MAX ↑ +${diffMax}</span>`;
                         else if (diffMax < 0) trendHTML = `<span class="trend ${row.max <= 90 ? 'down-bad' : 'down-good'}">MAX ↓ ${diffMax}</span>`;
                         else trendHTML = `<span class="trend flat">MAX =</span>`;
                     }
@@ -315,13 +317,39 @@
             Chart.defaults.color = isDark ? '#e0e0e0' : '#1d3557';
             const gridColor = isDark ? '#333' : '#e9ecef';
 
+            // Disegna il grafico a Linee
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             if(lineChartInstance) lineChartInstance.destroy(); 
             lineChartInstance = new Chart(ctxLine, { type: 'line', data: { labels: labels, datasets: [ { label: 'MAX', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3 }, { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 } ] }, options: { animation: { duration: 0 }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } } });
 
+            // Calcolo esatto delle percentuali per la Torta
+            const totale = conteggio.normale + conteggio.alta + conteggio.bassa;
+            const percNormale = totale > 0 ? Math.round((conteggio.normale / totale) * 100) : 0;
+            const percAlta = totale > 0 ? Math.round((conteggio.alta / totale) * 100) : 0;
+            const percBassa = totale > 0 ? Math.round((conteggio.bassa / totale) * 100) : 0;
+
+            // Disegna il grafico a Torta (Pie) con le percentuali
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             if(pieChartInstance) pieChartInstance.destroy();
-            pieChartInstance = new Chart(ctxPie, { type: 'doughnut', data: { labels: ['Normale', 'Alta', 'Bassa'], datasets: [{ data: [conteggio.normale, conteggio.alta, conteggio.bassa], backgroundColor: ['#2a9d8f', '#e63946', '#e9c46a'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'bottom' } }, cutout: '70%' } });
+            pieChartInstance = new Chart(ctxPie, { 
+                type: 'pie', // Cambiato da 'doughnut' a 'pie' per riempire il centro
+                data: { 
+                    labels: [`Normale (${percNormale}%)`, `Alta (${percAlta}%)`, `Bassa (${percBassa}%)`], 
+                    datasets: [{ 
+                        data: [conteggio.normale, conteggio.alta, conteggio.bassa], 
+                        backgroundColor: ['#2a9d8f', '#e63946', '#e9c46a'], 
+                        borderWidth: 1,
+                        borderColor: isDark ? '#1e1e1e' : '#ffffff'
+                    }] 
+                }, 
+                options: { 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { font: { size: 14 } } },
+                        tooltip: { callbacks: { label: function(context) { return ` ${context.raw} misurazioni`; } } }
+                    }, 
+                    cutout: '0%' // Il buco della ciambella ora è a zero
+                } 
+            });
         }
 
         async function azzeraArchivio() {
