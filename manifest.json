@@ -1,21 +1,24 @@
 {
-  "name": "Heart Monitor Pro",
-  "short_name": "Heart App",
+  "name": "Heart Monitor Ultra",
+  "short_name": "HeartApp",
   "description": "App per il monitoraggio della pressione",
   "start_url": "/my-heart-monitor/index.html",
   "display": "standalone",
-  "background_color": "#f8f9fa",
+  "orientation": "portrait",
+  "background_color": "#121212",
   "theme_color": "#e63946",
   "icons": [
     {
       "src": "icona.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icona.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
