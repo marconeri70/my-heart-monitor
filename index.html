@@ -8,7 +8,9 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#e63946">
     <link rel="apple-touch-icon" href="icona.png">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* Variabili Base e Tema Chiaro */
@@ -41,7 +43,6 @@
             padding-bottom: 50px; min-height: 100vh;
         }
 
-        /* Animazione Cuore Pulsante */
         @keyframes heartbeat {
             0% { transform: scale(1); }
             14% { transform: scale(1.3); }
@@ -54,7 +55,6 @@
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         
-        /* Effetto Glassmorphism (Vetro) per le Cards */
         .card { 
             background: var(--glass-bg); 
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -69,7 +69,6 @@
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         
-        /* Input Fields Premium */
         input { 
             width: 100%; padding: 14px; margin: 8px 0 15px 0; box-sizing: border-box; 
             border: 1px solid var(--glass-border); border-radius: 12px; font-size: 16px; 
@@ -80,7 +79,6 @@
         
         label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* Pulsanti Sfumati e Animati */
         button { 
             width: 100%; padding: 16px; margin: 10px 0; 
             background: linear-gradient(135deg, #e63946, #d90429);
@@ -99,7 +97,6 @@
 
         h2 { font-size: 20px; margin-top: 0; border-bottom: 2px solid var(--glass-border); padding-bottom: 12px; display: flex; align-items: center; gap: 10px;}
         
-        /* Stats Boxes */
         .stats-box { 
             text-align: center; padding: 15px 10px; 
             background: var(--input-bg); border-radius: 16px; 
@@ -109,7 +106,6 @@
         .stats-box div { font-size: 24px; font-weight: 900; color: var(--text); margin-top: 5px;}
         .stats-box span { font-size: 11px; color: var(--text-muted); font-weight: bold; }
 
-        /* Voci Archivio */
         .report-item { 
             border-left: 5px solid transparent; padding: 15px; margin-bottom: 12px; 
             background: var(--input-bg); border-radius: 12px; font-size: 14px; 
@@ -185,7 +181,7 @@
         <button id="btn-sync" class="btn-secondary" onclick="caricaStorico()">🔄 Aggiorna Dal Cloud</button>
         
         <div class="grid-2" style="margin-top: 15px;">
-            <button class="btn-export" onclick="scaricaWord()">📄 Esporta (Word)</button>
+            <button class="btn-export" onclick="scaricaPDF()">📄 Esporta (PDF)</button>
             <button class="btn-danger" onclick="azzeraArchivio()">🗑️ Archivia Mese</button>
         </div>
 
@@ -430,9 +426,16 @@
             try { for (let record of appData) await fetch(`https://api.github.com/repos/${user}/${repo}/issues/${record.number}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'closed' }) }); alert("✅ Archivio pronto per un nuovo ciclo!"); caricaStorico(); } catch (error) { alert("❌ Errore durante l'operazione."); caricaStorico(); }
         }
 
-        function scaricaWord() {
+        function scaricaPDF() {
             if(appData.length === 0) return;
             
+            // Disabilita temporaneamente il tasto per evitare doppi click
+            const btn = document.querySelector('.btn-export');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Generazione PDF...';
+            btn.disabled = true;
+            
+            // Cattura i grafici con sfondo bianco per evitare problemi con la Dark Mode nel PDF
             const canvasLine = document.getElementById('lineChart');
             const bgCtxLine = canvasLine.getContext('2d');
             bgCtxLine.globalCompositeOperation = 'destination-over'; bgCtxLine.fillStyle = "white"; bgCtxLine.fillRect(0, 0, canvasLine.width, canvasLine.height);
@@ -443,32 +446,73 @@
             bgCtxPie.globalCompositeOperation = 'destination-over'; bgCtxPie.fillStyle = "white"; bgCtxPie.fillRect(0, 0, canvasPie.width, canvasPie.height);
             const imgDataPie = canvasPie.toDataURL('image/png');
 
-            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>Diff</th><th>BPM</th><th>Note</th><th>Esito</th></tr>`;
-            appData.forEach(row => { let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f'); tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td><b>${row.max - row.min}</b></td><td>${row.bpm || '-'}</td><td style="font-style: italic; color: #555;">${row.nota || '-'}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`; }); tableHTML += `</table>`;
+            // Costruiamo la tabella
+            let tableHTML = `<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; margin-top: 20px;">
+                <tr style="background-color: #f1faee; border-bottom: 2px solid #e63946;">
+                    <th style="padding: 10px; border: 1px solid #ddd;">Data</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">MAX</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">MIN</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Diff</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">BPM</th>
+                    <th style="padding: 10px; border: 1px solid #ddd;">Esito</th>
+                </tr>`;
+                
+            appData.forEach(row => { 
+                let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f'); 
+                tableHTML += `<tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${row.data}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><b>${row.max}</b></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><b>${row.min}</b></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><b>${row.max - row.min}</b></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${row.bpm || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; color: ${colColor}; font-weight: bold;">${row.label}</td>
+                </tr>`;
+                if (row.nota) {
+                    tableHTML += `<tr><td colspan="6" style="padding: 5px 10px; border: 1px solid #ddd; font-style: italic; color: #555; text-align: left; font-size: 11px;">Nota: ${row.nota}</td></tr>`;
+                }
+            }); 
+            tableHTML += `</table>`;
             
-            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                <head><meta charset='utf-8'><title>Referto Medico</title></head>
-                <body style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #333;">
-                    <h1 style="color: #e63946; text-align: center; border-bottom: 2px solid #e63946; padding-bottom: 10px;">Referto Pressorio</h1>
-                    <p style="text-align: center; font-size: 16px;">
-                        Data generazione: <b>${new Date().toLocaleDateString('it-IT')}</b> <br><br>
-                        Sistolica Media: <b style="color:#e63946; font-size: 18px;">${document.getElementById('avg-max').innerText}</b> | 
-                        Diastolica Media: <b style="color:#457b9d; font-size: 18px;">${document.getElementById('avg-min').innerText}</b> |
-                        Diff Media: <b>${document.getElementById('avg-diff').innerText}</b>
-                    </p>
-                    <br>
-                    <div style="text-align: center;"><img src="${imgDataLine}" style="max-width: 650px; height: auto;"></div>
-                    <br><br>
-                    <div style="text-align: center;"><img src="${imgDataPie}" style="max-width: 350px; height: auto;"></div>
-                    <br><br>
-                    <h3 style="color: #1d3557;">Misurazioni Dettagliate</h3>
-                    ${tableHTML}
-                </body></html>`;
+            // Impostiamo l'HTML invisibile che diventerà il PDF
+            const referto = document.createElement('div');
+            referto.style.padding = '30px';
+            referto.style.fontFamily = 'Helvetica, Arial, sans-serif';
+            referto.style.color = '#333';
+            referto.style.backgroundColor = '#fff';
+            referto.innerHTML = `
+                <h1 style="color: #e63946; text-align: center; border-bottom: 2px solid #e63946; padding-bottom: 10px;">Referto Medico Pressione</h1>
+                <p style="text-align: center; font-size: 14px; color: #555;">
+                    Generato il: <b>${new Date().toLocaleDateString('it-IT')}</b>
+                </p>
+                <div style="display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <div style="text-align: center;">Media MAX<br><b style="color:#e63946; font-size: 22px;">${document.getElementById('avg-max').innerText}</b></div>
+                    <div style="text-align: center;">Media MIN<br><b style="color:#457b9d; font-size: 22px;">${document.getElementById('avg-min').innerText}</b></div>
+                    <div style="text-align: center;">Media DIFF<br><b style="font-size: 22px;">${document.getElementById('avg-diff').innerText}</b></div>
+                </div>
+                <h3 style="color: #1d3557; text-align: center; margin-top: 30px;">Andamento nel tempo</h3>
+                <div style="text-align: center;"><img src="${imgDataLine}" style="max-width: 100%; height: auto; max-height: 280px;"></div>
+                <h3 style="color: #1d3557; text-align: center; margin-top: 30px;">Distribuzione Valori</h3>
+                <div style="text-align: center;"><img src="${imgDataPie}" style="max-width: 100%; height: auto; max-height: 280px;"></div>
+                <h3 style="color: #1d3557; margin-top: 30px;">Dettaglio Misurazioni</h3>
+                ${tableHTML}
+            `;
 
-            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Referto_Pressione_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            
-            caricaStorico();
+            // Opzioni per la libreria html2pdf
+            const opt = {
+                margin:       10,
+                filename:     `Referto_Pressione_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Genera e salva il PDF
+            html2pdf().set(opt).from(referto).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                // Ripristina l'export ricaricando i grafici puliti per la visualizzazione a schermo
+                caricaStorico();
+            });
         }
     </script>
     
@@ -477,6 +521,5 @@
             navigator.serviceWorker.register('/my-heart-monitor/sw.js');
         }
     </script>
-    
 </body>
 </html>
