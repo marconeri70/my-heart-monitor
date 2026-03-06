@@ -206,16 +206,14 @@
 
             try {
                 const timestamp = new Date().getTime();
+                // Rimosse le istruzioni Cache-Control che bloccavano la connessione
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${timestamp}`, {
                     headers: { 
                         'Authorization': `Bearer ${token}`, 
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
+                        'Accept': 'application/vnd.github.v3+json'
                     }
                 });
                 
-                // SISTEMA DI DIAGNOSI ERRORI MIGLIORATO
                 if (!response.ok) {
                     if (response.status === 401) throw new Error("Token di sicurezza scaduto o errato.");
                     if (response.status === 404) throw new Error("Repository non trovato. Controlla User o Nome Repo.");
@@ -233,8 +231,6 @@
                     
                     const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
                     const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
-                    
-                    // Salvataggio anti-crash se il corpo è vuoto (es. issue manuale)
                     const bodyText = issue.body || ""; 
                     
                     const matchMax = bodyText.match(/(?:MAX|Sistolica).*?(\d+)/i);
@@ -302,15 +298,13 @@
                 disegnaGrafici(conteggio);
 
             } catch (error) { 
-                // MOSTRA L'ERRORE ESATTO IN ROSSO
-                listaEl.innerHTML = `<div class="error-msg">❌ Errore: ${error.message} <br><br>👉 Clicca su "⚙️ Modifica Configurazione Segreta" in fondo e controlla Token, Utente e Repo.</div>`; 
+                listaEl.innerHTML = `<div class="error-msg">❌ Errore: ${error.message} <br><br>👉 Se persiste, controlla Token, Utente e Repo in "Modifica Configurazione".</div>`; 
             } finally {
                 btnSync.disabled = false;
                 btnSync.innerText = '🔄 Sincronizza Dati';
             }
         }
 
-        // ... Le funzioni disegnaGrafici, azzeraArchivio e scaricaWord rimangono invariate e funzionanti ...
         function disegnaGrafici(conteggio) {
             const chartData = [...appData].reverse();
             const labels = chartData.map(d => d.data.split(',')[0]); 
