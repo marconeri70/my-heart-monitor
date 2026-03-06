@@ -273,22 +273,12 @@
             }
         }
 
+        // --- FUNZIONE PDF CORRETTA ---
         function scaricaPDF() {
             if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
 
             const btn = document.querySelector('.btn-export');
-            btn.innerText = "⏳ Creazione PDF...";
-
-            const reportDiv = document.createElement('div');
-            // AGGIUNTO: Fissiamo le dimensioni e lo mettiamo nel DOM di nascosto
-            reportDiv.style.width = '800px'; 
-            reportDiv.style.padding = '30px';
-            reportDiv.style.fontFamily = 'Helvetica, Arial, sans-serif';
-            reportDiv.style.color = '#1d3557';
-            reportDiv.style.background = 'white';
-            reportDiv.style.position = 'absolute';
-            reportDiv.style.top = '-9999px'; // Fuori dallo schermo!
-            document.body.appendChild(reportDiv);
+            btn.innerText = "⏳ Creazione PDF in corso...";
 
             const avgMax = document.getElementById('avg-max').innerText;
             const avgMin = document.getElementById('avg-min').innerText;
@@ -296,7 +286,7 @@
             const imgData = canvas.toDataURL('image/png', 1.0);
 
             let tableHTML = `
-                <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; margin-top: 20px;">
+                <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; margin-top: 20px; font-size: 14px;">
                     <tr style="background-color: #f1faee;">
                         <th style="padding: 10px;">Data e Ora</th>
                         <th style="padding: 10px;">MAX</th>
@@ -321,45 +311,46 @@
             });
             tableHTML += `</table>`;
 
-            reportDiv.innerHTML = `
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h1 style="color: #e63946; margin-bottom: 5px;">Referto Medico - Andamento Pressorio</h1>
-                    <p style="color: #6c757d; margin-top: 0;">Generato il: ${new Date().toLocaleDateString('it-IT')}</p>
-                </div>
-                <hr style="border: 1px solid #ced4da; margin-bottom: 20px;">
-                
-                <h3>Riepilogo Generale</h3>
-                <ul style="line-height: 1.6;">
-                    <li><b>Media Sistolica (MAX):</b> ${avgMax}</li>
-                    <li><b>Media Diastolica (MIN):</b> ${avgMin}</li>
-                    <li><b>Misurazioni Totali:</b> ${appData.length}</li>
-                </ul>
+            // Creiamo la struttura del PDF come testo HTML puro
+            const pdfContent = `
+                <div style="padding: 20px; font-family: Helvetica, Arial, sans-serif; color: #1d3557; background: white;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h1 style="color: #e63946; margin-bottom: 5px;">Referto Medico</h1>
+                        <p style="color: #6c757d; margin-top: 0;">Generato il: ${new Date().toLocaleDateString('it-IT')}</p>
+                    </div>
+                    <hr style="border: 1px solid #ced4da; margin-bottom: 20px;">
+                    
+                    <h3 style="margin-bottom: 10px;">Riepilogo Generale</h3>
+                    <ul style="line-height: 1.6; margin-top: 0;">
+                        <li><b>Media Sistolica (MAX):</b> ${avgMax}</li>
+                        <li><b>Media Diastolica (MIN):</b> ${avgMin}</li>
+                        <li><b>Misurazioni Totali:</b> ${appData.length}</li>
+                    </ul>
 
-                <h3>Grafico Andamento</h3>
-                <div style="text-align: center;">
-                    <img src="${imgData}" style="max-width: 100%; height: auto; border: 1px solid #eee; padding: 10px;">
-                </div>
+                    <h3 style="margin-bottom: 10px;">Grafico Andamento</h3>
+                    <div style="text-align: center;">
+                        <img src="${imgData}" style="max-width: 100%; height: auto; border: 1px solid #eee; padding: 10px;">
+                    </div>
 
-                <h3>Dettaglio Storico Misurazioni</h3>
-                ${tableHTML}
+                    <h3 style="margin-top: 20px; margin-bottom: 10px;">Dettaglio Storico Misurazioni</h3>
+                    ${tableHTML}
+                </div>
             `;
 
-            // AGGIUNTO: scrollY: 0 per forzare la partenza dalla cima esatta
             const opt = {
                 margin:       10,
                 filename:     `Referto_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, scrollY: 0, windowWidth: 800 },
+                html2canvas:  { scale: 2 }, // Ho tolto i parametri che causavano il bug della pagina bianca
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(reportDiv).save().then(() => {
+            // Diamo in pasto la stringa HTML direttamente alla libreria PDF
+            html2pdf().set(opt).from(pdfContent).save().then(() => {
                 btn.innerText = "📄 Scarica PDF"; 
-                document.body.removeChild(reportDiv); // Puliamo il documento nascosto
             }).catch(err => {
                 btn.innerText = "📄 Scarica PDF";
-                document.body.removeChild(reportDiv);
-                alert("Errore nella generazione del PDF");
+                alert("Errore nella generazione del PDF. Riprova.");
             });
         }
     </script>
