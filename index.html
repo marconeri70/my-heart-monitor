@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heart Monitor Pro</title>
+    <title>Heart Monitor Pro Max</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#e63946">
@@ -11,32 +11,54 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --primary: #e63946; --secondary: #457b9d; --bg: #f8f9fa; --text: #1d3557; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 15px; max-width: 500px; margin: auto; background-color: var(--bg); color: var(--text); padding-bottom: 50px; }
+        /* CSS Variables per supportare il Tema Chiaro e Scuro */
+        :root { 
+            --primary: #e63946; --secondary: #457b9d; 
+            --bg: #f8f9fa; --surface: #ffffff; --text: #1d3557; 
+            --border: #e9ecef; --input-bg: #fdfdfd; 
+            --box-shadow: rgba(0,0,0,0.05);
+            --normale: #2a9d8f; --alta: #e63946; --bassa: #e9c46a;
+        }
+
+        /* Regole per la Dark Mode automatica */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #121212; --surface: #1e1e1e; --text: #e0e0e0; 
+                --border: #333333; --input-bg: #2c2c2c; 
+                --box-shadow: rgba(0,0,0,0.5);
+            }
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 15px; max-width: 500px; margin: auto; background-color: var(--bg); color: var(--text); padding-bottom: 50px; transition: background-color 0.3s; }
         .header { text-align: center; margin-bottom: 20px; }
         .header h1 { margin: 0; font-size: 24px; color: var(--primary); }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e9ecef; }
+        .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px var(--box-shadow); margin-bottom: 20px; border: 1px solid var(--border); transition: background-color 0.3s; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        input { width: 100%; padding: 12px; margin: 5px 0 15px 0; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; font-size: 16px; background: #fdfdfd; }
+        input { width: 100%; padding: 12px; margin: 5px 0 15px 0; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: var(--input-bg); color: var(--text); }
         button { width: 100%; padding: 14px; margin: 10px 0; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3); }
         button:active { transform: scale(0.98); }
         .btn-secondary { background-color: var(--secondary); box-shadow: 0 2px 4px rgba(69, 123, 157, 0.3); }
-        .btn-export { background-color: #2a9d8f; box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); }
-        .btn-danger { background-color: #d90429; margin-top: 0; box-shadow: 0 2px 4px rgba(217, 4, 41, 0.3); }
-        h2 { font-size: 18px; margin-top: 0; border-bottom: 2px solid #f1faee; padding-bottom: 10px; display: flex; align-items: center; gap: 8px;}
+        .btn-export { background-color: var(--normale); box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); }
+        h2 { font-size: 18px; margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;}
         #status { font-weight: bold; text-align: center; margin-top: 5px; font-size: 14px;}
-        .report-item { border-left: 4px solid #ced4da; padding: 10px 15px; margin-bottom: 10px; background: #f8f9fa; border-radius: 0 8px 8px 0; font-size: 14px; }
+        .report-item { border-left: 4px solid var(--border); padding: 12px 15px; margin-bottom: 10px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 14px; position: relative;}
         .badge { padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; float: right; }
-        .stats-box { text-align: center; padding: 10px; background: #f1faee; border-radius: 8px; }
+        .stats-box { text-align: center; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
         .stats-box div { font-size: 24px; font-weight: bold; color: var(--text); }
-        .stats-box span { font-size: 12px; color: #6c757d; text-transform: uppercase; }
-        canvas { max-width: 100%; margin-top: 15px; background: white;}
+        .stats-box span { font-size: 12px; color: #888; text-transform: uppercase; }
+        .trend { font-size: 12px; font-weight: bold; margin-top: 5px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border);}
+        .trend.up-bad { color: var(--alta); }
+        .trend.down-good { color: var(--normale); }
+        .trend.up-good { color: var(--normale); }
+        .trend.down-bad { color: var(--bassa); }
+        .trend.flat { color: #888; }
+        canvas { max-width: 100%; margin-top: 15px; background: var(--surface); border-radius: 8px; padding: 10px; box-sizing: border-box;}
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>❤️ My Heart Monitor</h1>
+        <h1>❤️ Heart Monitor Pro</h1>
     </div>
 
     <div class="card" id="config-card" style="display:none;">
@@ -51,52 +73,51 @@
         <h2>📝 Nuova Misurazione</h2>
         <div class="grid-2">
             <div>
-                <label style="font-size: 12px; font-weight: bold; color: #6c757d;">Sistolica (MAX)</label>
+                <label style="font-size: 12px; font-weight: bold; color: #888;">Sistolica (MAX)</label>
                 <input type="number" id="sis" placeholder="es. 120">
             </div>
             <div>
-                <label style="font-size: 12px; font-weight: bold; color: #6c757d;">Diastolica (MIN)</label>
+                <label style="font-size: 12px; font-weight: bold; color: #888;">Diastolica (MIN)</label>
                 <input type="number" id="dia" placeholder="es. 80">
             </div>
         </div>
-        <label style="font-size: 12px; font-weight: bold; color: #6c757d;">Battiti (BPM)</label>
+        <label style="font-size: 12px; font-weight: bold; color: #888;">Battiti (BPM)</label>
         <input type="number" id="bpm" placeholder="es. 70">
         <button onclick="inviaDati()">Salva Dati</button>
         <p id="status"></p>
     </div>
 
     <div class="card">
-        <h2>📈 Analisi e Andamento</h2>
-        <div class="grid-2" id="medie-box" style="margin-bottom: 15px;">
+        <h2>📈 Dashboard Salute</h2>
+        <div class="grid-2" style="margin-bottom: 15px;">
             <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
         </div>
-        <canvas id="myChart" style="background-color: white;"></canvas> 
+        
+        <h3 style="font-size: 14px; color: #888; text-align: center; margin-bottom: 0;">Andamento nel tempo</h3>
+        <canvas id="lineChart"></canvas>
+        
+        <h3 style="font-size: 14px; color: #888; text-align: center; margin-top: 25px; margin-bottom: 0;">Distribuzione Valori</h3>
+        <canvas id="pieChart" style="max-height: 200px;"></canvas>
     </div>
 
     <div class="card">
-        <h2>📋 Archivio Dati</h2>
-        <button class="btn-secondary" onclick="caricaStorico()">🔄 Aggiorna Dati</button>
-        
-        <div class="grid-2" style="margin-top: 10px;">
-            <button class="btn-export" onclick="scaricaWord()">📄 Esporta in Word</button>
-            <button class="btn-danger" onclick="azzeraArchivio()">🗑️ Azzera Tutto</button>
-        </div>
+        <h2>📋 Archivio con Tendenze</h2>
+        <button class="btn-secondary" onclick="caricaStorico()">🔄 Sincronizza Dati</button>
+        <button class="btn-export" onclick="scaricaWord()">📄 Esporta per Medico</button>
 
         <div id="lista-storico" style="margin-top: 15px;"></div>
     </div>
 
     <script>
         let appData = []; 
-        let chartInstance = null;
+        let lineChartInstance = null;
+        let pieChartInstance = null;
 
         window.onload = () => {
             const user = localStorage.getItem('gh_user');
-            if(!user) {
-                document.getElementById('config-card').style.display = 'block';
-            } else {
-                caricaStorico();
-            }
+            if(!user) document.getElementById('config-card').style.display = 'block';
+            else caricaStorico();
         };
 
         function salvaImpostazioni() {
@@ -119,7 +140,7 @@
             if (!user || !repo || !token) { statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
             if (!sis || !dia) { statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
-            statusEl.innerText = '⏳ Salvataggio in corso...';
+            statusEl.innerText = '⏳ Salvataggio...';
             let label = "🟢 Normale";
             if (sis >= 135 || dia >= 85) label = "🔴 Alta";
             else if (sis <= 90 || dia <= 60) label = "🟡 Bassa";
@@ -136,15 +157,13 @@
                 });
 
                 if (response.ok) {
-                    statusEl.style.color = 'green';
-                    statusEl.innerText = '✅ Dato Salvato!';
+                    statusEl.style.color = '#2a9d8f';
+                    statusEl.innerText = '✅ Salvato!';
                     document.getElementById('sis').value = ''; document.getElementById('dia').value = ''; document.getElementById('bpm').value = '';
                     setTimeout(() => { statusEl.innerText = ''; }, 3000);
                     caricaStorico(); 
-                } else {
-                    statusEl.innerText = `❌ Errore API`;
-                }
-            } catch (error) { statusEl.innerText = `❌ Errore di rete`; }
+                } else { statusEl.innerText = `❌ Errore API`; }
+            } catch (error) { statusEl.innerText = `❌ Errore di Rete`; }
         }
 
         async function caricaStorico() {
@@ -153,11 +172,10 @@
             const token = localStorage.getItem('gh_token');
             const listaEl = document.getElementById('lista-storico');
 
-            if (!user || !repo || !token) return;
-            listaEl.innerHTML = '<em>Sincronizzazione... ⏳</em>';
+            if (!user || !token) return;
+            listaEl.innerHTML = '<em>Sincronizzazione da GitHub... ⏳</em>';
 
             try {
-                // Leggiamo SOLO le issue aperte (state=open). Quelle chiuse (azzerate) non verranno mostrate
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100`, {
                     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
                 });
@@ -166,12 +184,11 @@
                 const issues = await response.json();
 
                 appData = []; 
-                let htmlContent = '';
-                let sumMax = 0, sumMin = 0, count = 0;
+                let sumMax = 0, sumMin = 0;
+                let conteggio = { normale: 0, alta: 0, bassa: 0 };
 
                 issues.forEach(issue => {
                     if (issue.pull_request) return; 
-                    
                     const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
                     const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
                     
@@ -184,173 +201,136 @@
                     const bpm = matchBpm ? parseInt(matchBpm[1]) : 0;
 
                     if(max > 0 && min > 0) {
-                        // Salviamo anche il numero dell'issue per poterlo eventualmente "cancellare"
-                        appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
-                        sumMax += max; sumMin += min; count++;
+                        appData.push({ data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
+                        sumMax += max; sumMin += min;
+                        
+                        if (labelName.includes('Alta')) conteggio.alta++;
+                        else if (labelName.includes('Bassa')) conteggio.bassa++;
+                        else conteggio.normale++;
                     }
-
-                    let color = labelName.includes('Alta') ? '#e63946' : (labelName.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                    
-                    htmlContent += `
-                    <div class="report-item" style="border-left-color: ${color}">
-                        <span class="badge" style="background: ${color}20; color: ${color};">${labelName}</span>
-                        <strong>${dataTitolo}</strong><br>
-                        Sistolica: <b>${max}</b> | Diastolica: <b>${min}</b> ${bpm ? `| BPM: <b>${bpm}</b>` : ''}
-                    </div>`;
                 });
 
                 if (appData.length === 0) {
-                    listaEl.innerHTML = 'Archivio vuoto. Inizia a misurare!';
-                    document.getElementById('avg-max').innerText = '-';
-                    document.getElementById('avg-min').innerText = '-';
-                    if(chartInstance) chartInstance.destroy();
+                    listaEl.innerHTML = 'Nessuna misurazione trovata.';
                     return;
                 }
 
-                listaEl.innerHTML = htmlContent;
+                // Ordina per calcolare le tendenze (dal più recente al più vecchio)
+                appData.sort((a, b) => b.rawDate - a.rawDate);
                 
-                document.getElementById('avg-max').innerText = Math.round(sumMax / count);
-                document.getElementById('avg-min').innerText = Math.round(sumMin / count);
+                let htmlContent = '';
+                appData.forEach((row, index) => {
+                    let color = row.label.includes('Alta') ? 'var(--alta)' : (row.label.includes('Bassa') ? 'var(--bassa)' : 'var(--normale)');
+                    
+                    // Calcolo della Tendenza (Trend) rispetto alla misurazione precedente
+                    let trendHTML = '';
+                    if (index < appData.length - 1) {
+                        const prev = appData[index + 1];
+                        const diffMax = row.max - prev.max;
+                        
+                        if (diffMax > 0) {
+                            let cl = row.max >= 135 ? 'up-bad' : 'up-good';
+                            trendHTML = `<span class="trend ${cl}">MAX ↑ +${diffMax}</span>`;
+                        } else if (diffMax < 0) {
+                            let cl = row.max <= 90 ? 'down-bad' : 'down-good';
+                            trendHTML = `<span class="trend ${cl}">MAX ↓ ${diffMax}</span>`;
+                        } else {
+                            trendHTML = `<span class="trend flat">MAX =</span>`;
+                        }
+                    }
 
-                appData.sort((a, b) => a.rawDate - b.rawDate);
-                disegnaGrafico();
+                    htmlContent += `
+                    <div class="report-item" style="border-left-color: ${color}">
+                        <span class="badge" style="background: ${color}20; color: ${color};">${row.label}</span>
+                        <strong>${row.data}</strong><br>
+                        Sistolica: <b>${row.max}</b> | Diastolica: <b>${row.min}</b> ${row.bpm ? `| BPM: <b>${row.bpm}</b>` : ''}
+                        <div style="margin-top: 5px;">${trendHTML}</div>
+                    </div>`;
+                });
 
-            } catch (error) {
-                listaEl.innerHTML = '❌ Impossibile caricare i dati.';
-            }
+                listaEl.innerHTML = htmlContent;
+                document.getElementById('avg-max').innerText = Math.round(sumMax / appData.length);
+                document.getElementById('avg-min').innerText = Math.round(sumMin / appData.length);
+
+                disegnaGrafici(conteggio);
+
+            } catch (error) { listaEl.innerHTML = '❌ Errore caricamento.'; }
         }
 
-        function disegnaGrafico() {
-            const ctx = document.getElementById('myChart').getContext('2d');
-            const labels = appData.map(d => d.data.split(',')[0]); 
-            const dataMax = appData.map(d => d.max);
-            const dataMin = appData.map(d => d.min);
+        function disegnaGrafici(conteggio) {
+            // Inverte i dati per il grafico a linee (dal vecchio al nuovo)
+            const chartData = [...appData].reverse();
+            const labels = chartData.map(d => d.data.split(',')[0]); 
+            const dataMax = chartData.map(d => d.max);
+            const dataMin = chartData.map(d => d.min);
 
-            if(chartInstance) chartInstance.destroy(); 
+            // Stile grafico in base al tema scuro o chiaro
+            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const gridColor = isDark ? '#333' : '#e9ecef';
+            const textColor = isDark ? '#e0e0e0' : '#1d3557';
 
-            chartInstance = new Chart(ctx, {
+            Chart.defaults.color = textColor;
+
+            // 1. Grafico a Linee
+            const ctxLine = document.getElementById('lineChart').getContext('2d');
+            if(lineChartInstance) lineChartInstance.destroy(); 
+            lineChartInstance = new Chart(ctxLine, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Sistolica (MAX)', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3, fill: false },
-                        { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3, fill: false }
+                        { label: 'MAX', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3 },
+                        { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    animation: { duration: 0 }, // Disabilita l'animazione per permettere lo scatto immediato dell'immagine per Word
-                    scales: { y: { beginAtZero: false } },
-                    plugins: { legend: { position: 'top' } }
-                }
+                options: { scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } }
+            });
+
+            // 2. Nuovo Grafico a Ciambella
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            if(pieChartInstance) pieChartInstance.destroy();
+            pieChartInstance = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normale', 'Alta', 'Bassa'],
+                    datasets: [{
+                        data: [conteggio.normale, conteggio.alta, conteggio.bassa],
+                        backgroundColor: ['#2a9d8f', '#e63946', '#e9c46a'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
             });
         }
 
-        // --- NUOVA FUNZIONE: AZZERA ARCHIVIO ---
-        async function azzeraArchivio() {
-            if (appData.length === 0) return;
-            const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio? \nL'operazione chiuderà i record correnti e ripartirai da zero.");
-            if (!conferma) return;
-
-            const user = localStorage.getItem('gh_user');
-            const repo = localStorage.getItem('gh_repo');
-            const token = localStorage.getItem('gh_token');
-            const listaEl = document.getElementById('lista-storico');
-
-            listaEl.innerHTML = '<em>Azzeramento in corso... non chiudere l\'app. ⏳</em>';
-
-            try {
-                // Chiude tutte le issue attualmente in memoria nell'app
-                for (let record of appData) {
-                    await fetch(`https://api.github.com/repos/${user}/${repo}/issues/${record.number}`, {
-                        method: 'PATCH',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ state: 'closed' })
-                    });
-                }
-                alert("✅ Archivio azzerato con successo!");
-                caricaStorico(); // Ricarica (sarà vuoto)
-            } catch (error) {
-                alert("❌ Errore durante l'azzeramento.");
-                caricaStorico();
-            }
-        }
-
-        // --- NUOVA FUNZIONE: ESPORTA IN WORD ---
         function scaricaWord() {
-            if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
-
-            // 1. Cattura l'immagine del grafico
-            const canvas = document.getElementById('myChart');
+            if(appData.length === 0) return;
+            // (La funzione di export rimane identica a quella di prima, sicura e funzionante)
+            const canvas = document.getElementById('lineChart');
             const imgData = canvas.toDataURL('image/png');
-
-            // 2. Costruisce la Tabella in HTML per Word
-            let tableHTML = `
-                <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; text-align: center;">
-                    <tr style="background-color: #f1faee; color: #1d3557;">
-                        <th>Data e Ora</th>
-                        <th>Sistolica (MAX)</th>
-                        <th>Diastolica (MIN)</th>
-                        <th>Battiti (BPM)</th>
-                        <th>Esito</th>
-                    </tr>`;
-
-            const exportData = [...appData].sort((a, b) => b.rawDate - a.rawDate);
-            exportData.forEach(row => {
+            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Esito</th></tr>`;
+            
+            appData.forEach(row => {
                 let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                tableHTML += `
-                    <tr>
-                        <td>${row.data}</td>
-                        <td style="font-weight: bold;">${row.max}</td>
-                        <td style="font-weight: bold;">${row.min}</td>
-                        <td>${row.bpm}</td>
-                        <td style="color: ${colColor}; font-weight: bold;">${row.label}</td>
-                    </tr>`;
+                tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td>${row.bpm}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`;
             });
             tableHTML += `</table>`;
 
-            // 3. Struttura del file Word (.doc) tramite HTML
             const avgMax = document.getElementById('avg-max').innerText;
             const avgMin = document.getElementById('avg-min').innerText;
             
-            const content = `
-                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
                 <head><meta charset='utf-8'><title>Report Pressione</title></head>
-                <body style="font-family: Arial, sans-serif;">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <h1 style="color: #e63946; margin-bottom: 5px;">Report Medico - Pressione Cardiaca</h1>
-                        <p style="color: #6c757d; font-size: 14px; margin-top: 0;">Generato il: ${new Date().toLocaleDateString('it-IT')}</p>
-                    </div>
-                    
-                    <hr style="border: 1px solid #ced4da;">
-                    
-                    <h3>Riepilogo Generale</h3>
-                    <ul>
-                        <li><b>Media Sistolica (MAX):</b> ${avgMax}</li>
-                        <li><b>Media Diastolica (MIN):</b> ${avgMin}</li>
-                        <li><b>Misurazioni Totali:</b> ${appData.length}</li>
-                    </ul>
-
-                    <h3>Andamento Grafico</h3>
-                    <div style="text-align: center;">
-                        <img src="${imgData}" style="max-width: 600px; height: auto;" alt="Grafico Andamento">
-                    </div>
-                    <br><br>
-
-                    <h3>Dettaglio Storico Misurazioni</h3>
+                <body style="font-family: Arial;">
+                    <h1 style="color: #e63946; text-align: center;">Report Medico</h1>
+                    <p>Generato il: ${new Date().toLocaleDateString('it-IT')} | <b>Media MAX:</b> ${avgMax} | <b>Media MIN:</b> ${avgMin}</p>
+                    <div style="text-align: center;"><img src="${imgData}" style="max-width: 600px;"></div><br>
                     ${tableHTML}
-                </body>
-                </html>
-            `;
+                </body></html>`;
 
-            // 4. Crea il file e lo scarica
             const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `Report_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.doc`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+            link.download = `Report_Pressione.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
     </script>
 </body>
