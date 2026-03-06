@@ -18,6 +18,7 @@
         .header h1 { margin: 0; font-size: 24px; color: var(--primary); }
         .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px var(--box-shadow); margin-bottom: 20px; border: 1px solid var(--border); transition: background-color 0.3s; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         input { width: 100%; padding: 12px; margin: 5px 0 15px 0; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: var(--input-bg); color: var(--text); }
         button { width: 100%; padding: 14px; margin: 10px 0; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3); }
         button:active { transform: scale(0.98); }
@@ -31,8 +32,8 @@
         .report-item { border-left: 4px solid var(--border); padding: 12px 15px; margin-bottom: 10px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 14px; position: relative;}
         .badge { padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 12px; float: right; }
         .stats-box { text-align: center; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
-        .stats-box div { font-size: 24px; font-weight: bold; color: var(--text); }
-        .stats-box span { font-size: 12px; color: #888; text-transform: uppercase; }
+        .stats-box div { font-size: 20px; font-weight: bold; color: var(--text); margin-top: 4px;}
+        .stats-box span { font-size: 11px; color: #888; text-transform: uppercase; }
         .trend { font-size: 12px; font-weight: bold; margin-top: 5px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border);}
         .trend.up-bad { color: var(--alta); }
         .trend.down-good { color: var(--normale); }
@@ -86,9 +87,10 @@
 
     <div class="card">
         <h2>📈 Dashboard Salute</h2>
-        <div class="grid-2" style="margin-bottom: 15px;">
+        <div class="grid-3" style="margin-bottom: 15px;">
             <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
+            <div class="stats-box"><span>Media DIFF</span><div id="avg-diff">-</div></div>
         </div>
         
         <h3 style="font-size: 14px; color: #888; text-align: center; margin-bottom: 0;">Andamento nel tempo</h3>
@@ -158,7 +160,6 @@
             statusEl.innerText = '';
 
             let label = "🟢 Normale";
-            // NUOVA SOGLIA: Scatta Alta solo se MAX è 140+ o MIN è 90+
             if (sis >= 140 || dia >= 90) label = "🔴 Alta";
             else if (sis <= 90 || dia <= 60) label = "🟡 Bassa";
 
@@ -223,13 +224,12 @@
                 const issues = await response.json();
 
                 appData = []; 
-                let sumMax = 0, sumMin = 0;
+                let sumMax = 0, sumMin = 0, sumDiff = 0;
                 let conteggio = { normale: 0, alta: 0, bassa: 0 };
 
                 issues.forEach(issue => {
                     if (issue.pull_request) return; 
                     
-                    // Controlliamo il testo del label per assicurarci che usi le nuove soglie anche per il conteggio grafico
                     const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
                     const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
                     const bodyText = issue.body || ""; 
@@ -246,9 +246,10 @@
 
                     if(max > 0 && min > 0) {
                         appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, nota: notaText, label: labelName, rawDate: new Date(issue.created_at) });
-                        sumMax += max; sumMin += min;
+                        sumMax += max; 
+                        sumMin += min;
+                        sumDiff += (max - min);
                         
-                        // Per il grafico a torta ricontrolliamo i valori reali per non essere ingannati da vecchie etichette salvate
                         if (max >= 140 || min >= 90) conteggio.alta++;
                         else if (max <= 90 || min <= 60) conteggio.bassa++;
                         else conteggio.normale++;
@@ -259,6 +260,7 @@
                     listaEl.innerHTML = 'Nessuna misurazione trovata. Inizia a misurare!';
                     document.getElementById('avg-max').innerText = '-';
                     document.getElementById('avg-min').innerText = '-';
+                    document.getElementById('avg-diff').innerText = '-';
                     if(lineChartInstance) lineChartInstance.destroy();
                     if(pieChartInstance) pieChartInstance.destroy();
                     btnSync.disabled = false;
@@ -287,7 +289,7 @@
                     <div class="report-item" style="border-left-color: ${color}">
                         <span class="badge" style="background: ${color}20; color: ${color};">${row.label}</span>
                         <strong>${row.data}</strong><br>
-                        Sistolica: <b>${row.max}</b> | Diastolica: <b>${row.min}</b> ${row.bpm ? `| BPM: <b>${row.bpm}</b>` : ''}
+                        Sistolica: <b>${row.max}</b> | Diastolica: <b>${row.min}</b> | Diff: <b>${row.max - row.min}</b> ${row.bpm ? `| BPM: <b>${row.bpm}</b>` : ''}
                         <div style="margin-top: 5px;">${trendHTML}</div>
                         ${notaHTML}
                     </div>`;
@@ -296,6 +298,7 @@
                 listaEl.innerHTML = htmlContent;
                 document.getElementById('avg-max').innerText = Math.round(sumMax / appData.length);
                 document.getElementById('avg-min').innerText = Math.round(sumMin / appData.length);
+                document.getElementById('avg-diff').innerText = Math.round(sumDiff / appData.length);
 
                 disegnaGrafici(conteggio);
 
@@ -317,22 +320,19 @@
             Chart.defaults.color = isDark ? '#e0e0e0' : '#1d3557';
             const gridColor = isDark ? '#333' : '#e9ecef';
 
-            // Disegna il grafico a Linee
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             if(lineChartInstance) lineChartInstance.destroy(); 
             lineChartInstance = new Chart(ctxLine, { type: 'line', data: { labels: labels, datasets: [ { label: 'MAX', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3 }, { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 } ] }, options: { animation: { duration: 0 }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } } });
 
-            // Calcolo esatto delle percentuali per la Torta
             const totale = conteggio.normale + conteggio.alta + conteggio.bassa;
             const percNormale = totale > 0 ? Math.round((conteggio.normale / totale) * 100) : 0;
             const percAlta = totale > 0 ? Math.round((conteggio.alta / totale) * 100) : 0;
             const percBassa = totale > 0 ? Math.round((conteggio.bassa / totale) * 100) : 0;
 
-            // Disegna il grafico a Torta (Pie) con le percentuali
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             if(pieChartInstance) pieChartInstance.destroy();
             pieChartInstance = new Chart(ctxPie, { 
-                type: 'pie', // Cambiato da 'doughnut' a 'pie' per riempire il centro
+                type: 'pie', 
                 data: { 
                     labels: [`Normale (${percNormale}%)`, `Alta (${percAlta}%)`, `Bassa (${percBassa}%)`], 
                     datasets: [{ 
@@ -347,7 +347,7 @@
                         legend: { position: 'bottom', labels: { font: { size: 14 } } },
                         tooltip: { callbacks: { label: function(context) { return ` ${context.raw} misurazioni`; } } }
                     }, 
-                    cutout: '0%' // Il buco della ciambella ora è a zero
+                    cutout: '0%' 
                 } 
             });
         }
@@ -362,11 +362,48 @@
 
         function scaricaWord() {
             if(appData.length === 0) return;
-            const canvas = document.getElementById('lineChart'), imgData = canvas.toDataURL('image/png');
-            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Note</th><th>Esito</th></tr>`;
-            appData.forEach(row => { let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f'); tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td>${row.bpm || '-'}</td><td style="font-style: italic; color: #555;">${row.nota || '-'}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`; }); tableHTML += `</table>`;
-            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Report Pressione</title></head><body style="font-family: Arial;"><h1 style="color: #e63946; text-align: center;">Report Medico</h1><p>Generato: ${new Date().toLocaleDateString('it-IT')} | <b>Media MAX:</b> ${document.getElementById('avg-max').innerText} | <b>Media MIN:</b> ${document.getElementById('avg-min').innerText}</p><div style="text-align: center;"><img src="${imgData}" style="max-width: 600px;"></div><br>${tableHTML}</body></html>`;
-            const blob = new Blob(['\ufeff', content], { type: 'application/msword' }), link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Report_Pressione.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            
+            const canvasLine = document.getElementById('lineChart');
+            const imgDataLine = canvasLine.toDataURL('image/png');
+            const canvasPie = document.getElementById('pieChart');
+            const imgDataPie = canvasPie.toDataURL('image/png');
+
+            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>Diff</th><th>BPM</th><th>Note</th><th>Esito</th></tr>`;
+            
+            appData.forEach(row => { 
+                let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f'); 
+                tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td><b>${row.max - row.min}</b></td><td>${row.bpm || '-'}</td><td style="font-style: italic; color: #555;">${row.nota || '-'}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`; 
+            }); 
+            tableHTML += `</table>`;
+            
+            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>Report Pressione</title></head>
+                <body style="font-family: Arial;">
+                    <h1 style="color: #e63946; text-align: center;">Report Medico</h1>
+                    <p style="text-align: center; font-size: 16px;">
+                        Generato: ${new Date().toLocaleDateString('it-IT')} <br><br>
+                        <b>Media MAX:</b> ${document.getElementById('avg-max').innerText} | 
+                        <b>Media MIN:</b> ${document.getElementById('avg-min').innerText} |
+                        <b>Media DIFF:</b> ${document.getElementById('avg-diff').innerText}
+                    </p>
+                    <br>
+                    <h3 style="text-align: center; color: #457b9d;">Andamento nel tempo</h3>
+                    <div style="text-align: center;"><img src="${imgDataLine}" style="max-width: 600px; height: auto;"></div>
+                    <br><br>
+                    <h3 style="text-align: center; color: #457b9d;">Distribuzione Valori</h3>
+                    <div style="text-align: center;"><img src="${imgDataPie}" style="max-width: 350px; height: auto;"></div>
+                    <br><br>
+                    <h3 style="color: #457b9d;">Dettaglio Misurazioni</h3>
+                    ${tableHTML}
+                </body></html>`;
+
+            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+            const link = document.createElement("a"); 
+            link.href = URL.createObjectURL(blob); 
+            link.download = `Report_Pressione.doc`; 
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
         }
     </script>
 </body>
