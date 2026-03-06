@@ -11,22 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { 
-            --primary: #e63946; --secondary: #457b9d; 
-            --bg: #f8f9fa; --surface: #ffffff; --text: #1d3557; 
-            --border: #e9ecef; --input-bg: #fdfdfd; 
-            --box-shadow: rgba(0,0,0,0.05);
-            --normale: #2a9d8f; --alta: #e63946; --bassa: #e9c46a;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #121212; --surface: #1e1e1e; --text: #e0e0e0; 
-                --border: #333333; --input-bg: #2c2c2c; 
-                --box-shadow: rgba(0,0,0,0.5);
-            }
-        }
-
+        :root { --primary: #e63946; --secondary: #457b9d; --bg: #f8f9fa; --surface: #ffffff; --text: #1d3557; --border: #e9ecef; --input-bg: #fdfdfd; --box-shadow: rgba(0,0,0,0.05); --normale: #2a9d8f; --alta: #e63946; --bassa: #e9c46a; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #121212; --surface: #1e1e1e; --text: #e0e0e0; --border: #333333; --input-bg: #2c2c2c; --box-shadow: rgba(0,0,0,0.5); } }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 15px; max-width: 500px; margin: auto; background-color: var(--bg); color: var(--text); padding-bottom: 50px; transition: background-color 0.3s; }
         .header { text-align: center; margin-bottom: 20px; }
         .header h1 { margin: 0; font-size: 24px; color: var(--primary); }
@@ -39,6 +25,7 @@
         .btn-secondary { background-color: var(--secondary); box-shadow: 0 2px 4px rgba(69, 123, 157, 0.3); }
         .btn-export { background-color: var(--normale); box-shadow: 0 2px 4px rgba(42, 157, 143, 0.3); margin-top:0;}
         .btn-danger { background-color: #d90429; box-shadow: 0 2px 4px rgba(217, 4, 41, 0.3); margin-top:0;}
+        .btn-config { background-color: #6c757d; margin-top: 20px;}
         h2 { font-size: 18px; margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;}
         #status { font-weight: bold; text-align: center; margin-top: 5px; font-size: 14px;}
         .report-item { border-left: 4px solid var(--border); padding: 12px 15px; margin-bottom: 10px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 14px; position: relative;}
@@ -53,6 +40,7 @@
         .trend.down-bad { color: var(--bassa); }
         .trend.flat { color: #888; }
         canvas { max-width: 100%; margin-top: 15px; background: var(--surface); border-radius: 8px; padding: 10px; box-sizing: border-box;}
+        .error-msg { color: #d90429; font-weight: bold; background: #ffe3e3; padding: 10px; border-radius: 8px; border: 1px solid #ffb3b3;}
     </style>
 </head>
 <body>
@@ -61,12 +49,12 @@
         <h1>❤️ Heart Monitor Pro</h1>
     </div>
 
-    <div class="card" id="config-card" style="display:none;">
-        <h2>⚙️ Configurazione</h2>
+    <div class="card" id="config-card" style="display:none; border: 2px solid #457b9d;">
+        <h2>⚙️ Impostazioni GitHub</h2>
         <input type="text" id="username" placeholder="Username (es. marconeri70)">
         <input type="text" id="repo" placeholder="Repo (es. my-heart-monitor)">
-        <input type="password" id="token" placeholder="Token GitHub">
-        <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni</button>
+        <input type="password" id="token" placeholder="Token GitHub (github_pat_...)">
+        <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni e Ricarica</button>
     </div>
 
     <div class="card">
@@ -120,6 +108,8 @@
         </div>
 
         <div id="lista-storico" style="margin-top: 15px;"></div>
+        
+        <button class="btn-config" onclick="mostraConfig()">⚙️ Modifica Configurazione Segreta</button>
     </div>
 
     <script>
@@ -132,6 +122,14 @@
             if(!user) document.getElementById('config-card').style.display = 'block';
             else caricaStorico();
         };
+
+        function mostraConfig() {
+            document.getElementById('config-card').style.display = 'block';
+            document.getElementById('username').value = localStorage.getItem('gh_user') || '';
+            document.getElementById('repo').value = localStorage.getItem('gh_repo') || '';
+            document.getElementById('token').value = localStorage.getItem('gh_token') || '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         function salvaImpostazioni() {
             localStorage.setItem('gh_user', document.getElementById('username').value.trim());
@@ -152,7 +150,7 @@
             const statusEl = document.getElementById('status');
             const btnSalva = document.getElementById('btn-salva');
 
-            if (!user || !repo || !token) { statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
+            if (!user || !repo || !token) { statusEl.innerText = '⚠️ Clicca su Modifica Configurazione.'; return; }
             if (!sis || !dia) { statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
             btnSalva.disabled = true;
@@ -165,12 +163,8 @@
 
             const data = new Date();
             const titolo = `Misurazione: ${data.toLocaleString('it-IT')}`;
-            
-            // Aggiungiamo la nota al corpo del messaggio se presente
             let corpo = `MAX: ${sis} | MIN: ${dia} | BPM: ${bpm}`;
-            if (nota !== "") {
-                corpo += ` | Nota: ${nota}`;
-            }
+            if (nota !== "") corpo += ` | Nota: ${nota}`;
 
             try {
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues`, {
@@ -182,15 +176,15 @@
                 if (response.ok) {
                     statusEl.style.color = '#2a9d8f';
                     statusEl.innerText = '✅ Salvato!';
-                    document.getElementById('sis').value = ''; 
-                    document.getElementById('dia').value = ''; 
-                    document.getElementById('bpm').value = '';
-                    document.getElementById('nota').value = '';
+                    document.getElementById('sis').value = ''; document.getElementById('dia').value = ''; 
+                    document.getElementById('bpm').value = ''; document.getElementById('nota').value = '';
                     setTimeout(() => { statusEl.innerText = ''; }, 3000);
                     await caricaStorico(); 
-                } else { statusEl.innerText = `❌ Errore API`; }
+                } else { 
+                    statusEl.innerHTML = `<span style="color:red">❌ Errore API: Controlla Token o Nomi Repo</span>`; 
+                }
             } catch (error) { 
-                statusEl.innerText = `❌ Errore di Rete`; 
+                statusEl.innerHTML = `<span style="color:red">❌ Errore di Rete</span>`; 
             } finally {
                 btnSalva.disabled = false;
                 btnSalva.innerText = 'Salva Dati';
@@ -216,12 +210,18 @@
                     headers: { 
                         'Authorization': `Bearer ${token}`, 
                         'Accept': 'application/vnd.github.v3+json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache'
                     }
                 });
                 
-                if (!response.ok) throw new Error("Errore API");
+                // SISTEMA DI DIAGNOSI ERRORI MIGLIORATO
+                if (!response.ok) {
+                    if (response.status === 401) throw new Error("Token di sicurezza scaduto o errato.");
+                    if (response.status === 404) throw new Error("Repository non trovato. Controlla User o Nome Repo.");
+                    throw new Error(`Errore server GitHub (Codice ${response.status})`);
+                }
+
                 const issues = await response.json();
 
                 appData = []; 
@@ -230,14 +230,17 @@
 
                 issues.forEach(issue => {
                     if (issue.pull_request) return; 
+                    
                     const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
                     const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
                     
-                    const matchMax = issue.body.match(/(?:MAX|Sistolica).*?(\d+)/i);
-                    const matchMin = issue.body.match(/(?:MIN|Diastolica).*?(\d+)/i);
-                    const matchBpm = issue.body.match(/(?:BPM|Battiti).*?(\d+)/i);
-                    // Regex per catturare la nota
-                    const matchNota = issue.body.match(/(?:Nota).*?:\s*(.*)/i);
+                    // Salvataggio anti-crash se il corpo è vuoto (es. issue manuale)
+                    const bodyText = issue.body || ""; 
+                    
+                    const matchMax = bodyText.match(/(?:MAX|Sistolica).*?(\d+)/i);
+                    const matchMin = bodyText.match(/(?:MIN|Diastolica).*?(\d+)/i);
+                    const matchBpm = bodyText.match(/(?:BPM|Battiti).*?(\d+)/i);
+                    const matchNota = bodyText.match(/(?:Nota).*?:\s*(.*)/i);
 
                     const max = matchMax ? parseInt(matchMax[1]) : 0;
                     const min = matchMin ? parseInt(matchMin[1]) : 0;
@@ -275,19 +278,11 @@
                     if (index < appData.length - 1) {
                         const prev = appData[index + 1];
                         const diffMax = row.max - prev.max;
-                        
-                        if (diffMax > 0) {
-                            let cl = row.max >= 135 ? 'up-bad' : 'up-good';
-                            trendHTML = `<span class="trend ${cl}">MAX ↑ +${diffMax}</span>`;
-                        } else if (diffMax < 0) {
-                            let cl = row.max <= 90 ? 'down-bad' : 'down-good';
-                            trendHTML = `<span class="trend ${cl}">MAX ↓ ${diffMax}</span>`;
-                        } else {
-                            trendHTML = `<span class="trend flat">MAX =</span>`;
-                        }
+                        if (diffMax > 0) trendHTML = `<span class="trend ${row.max >= 135 ? 'up-bad' : 'up-good'}">MAX ↑ +${diffMax}</span>`;
+                        else if (diffMax < 0) trendHTML = `<span class="trend ${row.max <= 90 ? 'down-bad' : 'down-good'}">MAX ↓ ${diffMax}</span>`;
+                        else trendHTML = `<span class="trend flat">MAX =</span>`;
                     }
 
-                    // Aggiunge la nota nell'interfaccia se esiste
                     let notaHTML = row.nota ? `<div style="margin-top: 6px; font-size: 13px; color: #666;">📝 <i>${row.nota}</i></div>` : '';
 
                     htmlContent += `
@@ -307,13 +302,15 @@
                 disegnaGrafici(conteggio);
 
             } catch (error) { 
-                listaEl.innerHTML = '❌ Errore caricamento.'; 
+                // MOSTRA L'ERRORE ESATTO IN ROSSO
+                listaEl.innerHTML = `<div class="error-msg">❌ Errore: ${error.message} <br><br>👉 Clicca su "⚙️ Modifica Configurazione Segreta" in fondo e controlla Token, Utente e Repo.</div>`; 
             } finally {
                 btnSync.disabled = false;
                 btnSync.innerText = '🔄 Sincronizza Dati';
             }
         }
 
+        // ... Le funzioni disegnaGrafici, azzeraArchivio e scaricaWord rimangono invariate e funzionanti ...
         function disegnaGrafici(conteggio) {
             const chartData = [...appData].reverse();
             const labels = chartData.map(d => d.data.split(',')[0]); 
@@ -321,105 +318,33 @@
             const dataMin = chartData.map(d => d.min);
 
             const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            Chart.defaults.color = isDark ? '#e0e0e0' : '#1d3557';
             const gridColor = isDark ? '#333' : '#e9ecef';
-            const textColor = isDark ? '#e0e0e0' : '#1d3557';
-
-            Chart.defaults.color = textColor;
 
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             if(lineChartInstance) lineChartInstance.destroy(); 
-            lineChartInstance = new Chart(ctxLine, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'MAX', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3 },
-                        { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 }
-                    ]
-                },
-                options: { animation: { duration: 0 }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } }
-            });
+            lineChartInstance = new Chart(ctxLine, { type: 'line', data: { labels: labels, datasets: [ { label: 'MAX', data: dataMax, borderColor: '#e63946', backgroundColor: '#e63946', tension: 0.3 }, { label: 'MIN', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3 } ] }, options: { animation: { duration: 0 }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor } } } } });
 
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             if(pieChartInstance) pieChartInstance.destroy();
-            pieChartInstance = new Chart(ctxPie, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Normale', 'Alta', 'Bassa'],
-                    datasets: [{
-                        data: [conteggio.normale, conteggio.alta, conteggio.bassa],
-                        backgroundColor: ['#2a9d8f', '#e63946', '#e9c46a'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
-            });
+            pieChartInstance = new Chart(ctxPie, { type: 'doughnut', data: { labels: ['Normale', 'Alta', 'Bassa'], datasets: [{ data: [conteggio.normale, conteggio.alta, conteggio.bassa], backgroundColor: ['#2a9d8f', '#e63946', '#e9c46a'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'bottom' } }, cutout: '70%' } });
         }
 
         async function azzeraArchivio() {
             if (appData.length === 0) return;
-            const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio? \nL'operazione chiuderà i record correnti e ripartirai da zero.");
-            if (!conferma) return;
-
-            const user = localStorage.getItem('gh_user');
-            const repo = localStorage.getItem('gh_repo');
-            const token = localStorage.getItem('gh_token');
-            const listaEl = document.getElementById('lista-storico');
-
-            listaEl.innerHTML = '<em>Azzeramento in corso... non chiudere l\'app. ⏳</em>';
-
-            try {
-                for (let record of appData) {
-                    await fetch(`https://api.github.com/repos/${user}/${repo}/issues/${record.number}`, {
-                        method: 'PATCH',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ state: 'closed' })
-                    });
-                }
-                alert("✅ Archivio azzerato con successo!");
-                caricaStorico(); 
-            } catch (error) {
-                alert("❌ Errore durante l'azzeramento.");
-                caricaStorico();
-            }
+            if (!confirm("⚠️ Sicuro di voler azzerare l'archivio? Ripartirai da zero.")) return;
+            const user = localStorage.getItem('gh_user'), repo = localStorage.getItem('gh_repo'), token = localStorage.getItem('gh_token'), listaEl = document.getElementById('lista-storico');
+            listaEl.innerHTML = '<em>Azzeramento in corso... ⏳</em>';
+            try { for (let record of appData) await fetch(`https://api.github.com/repos/${user}/${repo}/issues/${record.number}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'closed' }) }); alert("✅ Archivio azzerato!"); caricaStorico(); } catch (error) { alert("❌ Errore azzeramento."); caricaStorico(); }
         }
 
         function scaricaWord() {
             if(appData.length === 0) return;
-            
-            const canvas = document.getElementById('lineChart');
-            const imgData = canvas.toDataURL('image/png');
-            // Ho aggiunto la colonna "Note" alla tabella
+            const canvas = document.getElementById('lineChart'), imgData = canvas.toDataURL('image/png');
             let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Note</th><th>Esito</th></tr>`;
-            
-            appData.forEach(row => {
-                let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                tableHTML += `<tr>
-                    <td>${row.data}</td>
-                    <td><b>${row.max}</b></td>
-                    <td><b>${row.min}</b></td>
-                    <td>${row.bpm || '-'}</td>
-                    <td style="font-style: italic; color: #555;">${row.nota || '-'}</td>
-                    <td style="color: ${colColor}; font-weight: bold;">${row.label}</td>
-                </tr>`;
-            });
-            tableHTML += `</table>`;
-
-            const avgMax = document.getElementById('avg-max').innerText;
-            const avgMin = document.getElementById('avg-min').innerText;
-            
-            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-                <head><meta charset='utf-8'><title>Report Pressione</title></head>
-                <body style="font-family: Arial;">
-                    <h1 style="color: #e63946; text-align: center;">Report Medico</h1>
-                    <p>Generato il: ${new Date().toLocaleDateString('it-IT')} | <b>Media MAX:</b> ${avgMax} | <b>Media MIN:</b> ${avgMin}</p>
-                    <div style="text-align: center;"><img src="${imgData}" style="max-width: 600px;"></div><br>
-                    ${tableHTML}
-                </body></html>`;
-
-            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-            link.download = `Report_Pressione.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            appData.forEach(row => { let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f'); tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td>${row.bpm || '-'}</td><td style="font-style: italic; color: #555;">${row.nota || '-'}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`; }); tableHTML += `</table>`;
+            const content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Report Pressione</title></head><body style="font-family: Arial;"><h1 style="color: #e63946; text-align: center;">Report Medico</h1><p>Generato: ${new Date().toLocaleDateString('it-IT')} | <b>Media MAX:</b> ${document.getElementById('avg-max').innerText} | <b>Media MIN:</b> ${document.getElementById('avg-min').innerText}</p><div style="text-align: center;"><img src="${imgData}" style="max-width: 600px;"></div><br>${tableHTML}</body></html>`;
+            const blob = new Blob(['\ufeff', content], { type: 'application/msword' }), link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Report_Pressione.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
     </script>
 </body>
