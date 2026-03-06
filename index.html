@@ -96,8 +96,6 @@
         .btn-secondary:hover { box-shadow: 0 6px 20px rgba(69, 123, 157, 0.5); }
         .btn-export { background: linear-gradient(135deg, #2a9d8f, #21867a); box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4); margin-top:0;}
         .btn-danger { background: linear-gradient(135deg, #d90429, #9d021e); box-shadow: 0 4px 15px rgba(217, 4, 41, 0.4); margin-top:0;}
-        .btn-config { background: transparent; border: 2px dashed var(--glass-border); color: var(--text-muted); box-shadow: none; margin-top: 20px;}
-        .btn-config:hover { background: var(--glass-border); color: var(--text); box-shadow: none;}
 
         h2 { font-size: 20px; margin-top: 0; border-bottom: 2px solid var(--glass-border); padding-bottom: 12px; display: flex; align-items: center; gap: 10px;}
         
@@ -192,8 +190,6 @@
         </div>
 
         <div id="lista-storico" style="margin-top: 20px;"></div>
-        
-        <button class="btn-config" onclick="mostraConfig()">Modifica Credenziali API</button>
     </div>
 
     <script>
@@ -206,14 +202,6 @@
             if(!user) document.getElementById('config-card').style.display = 'block';
             else caricaStorico();
         };
-
-        function mostraConfig() {
-            document.getElementById('config-card').style.display = 'block';
-            document.getElementById('username').value = localStorage.getItem('gh_user') || '';
-            document.getElementById('repo').value = localStorage.getItem('gh_repo') || '';
-            document.getElementById('token').value = localStorage.getItem('gh_token') || '';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
 
         function salvaImpostazioni() {
             localStorage.setItem('gh_user', document.getElementById('username').value.trim());
@@ -234,7 +222,11 @@
             const statusEl = document.getElementById('status');
             const btnSalva = document.getElementById('btn-salva');
 
-            if (!user || !repo || !token) { statusEl.innerText = '⚠️ Clicca su Modifica Credenziali.'; return; }
+            if (!user || !repo || !token) { 
+                document.getElementById('config-card').style.display = 'block';
+                statusEl.innerText = '⚠️ Inserisci le credenziali in alto.'; 
+                return; 
+            }
             if (!sis || !dia) { statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
             btnSalva.disabled = true;
@@ -384,7 +376,6 @@
             
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             
-            // Effetto Sfumatura (Gradient Fill) per i grafici
             let gradMax = ctxLine.createLinearGradient(0, 0, 0, 300);
             gradMax.addColorStop(0, 'rgba(230, 57, 70, 0.4)'); gradMax.addColorStop(1, 'rgba(230, 57, 70, 0.0)');
             
@@ -425,7 +416,7 @@
                     }] 
                 }, 
                 options: { 
-                    cutout: '60%', // Ciambella premium
+                    cutout: '60%',
                     plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } } 
                 } 
             });
@@ -442,7 +433,6 @@
         function scaricaWord() {
             if(appData.length === 0) return;
             
-            // Per l'export Word, impostiamo momentaneamente uno sfondo bianco per evitare artefatti con la dark mode
             const canvasLine = document.getElementById('lineChart');
             const bgCtxLine = canvasLine.getContext('2d');
             bgCtxLine.globalCompositeOperation = 'destination-over'; bgCtxLine.fillStyle = "white"; bgCtxLine.fillRect(0, 0, canvasLine.width, canvasLine.height);
@@ -478,7 +468,6 @@
             const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
             const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Referto_Pressione_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.doc`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
             
-            // Ripristina l'export
             caricaStorico();
         }
     </script>
