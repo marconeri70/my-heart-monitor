@@ -81,8 +81,17 @@
                 <input type="number" id="dia" placeholder="es. 80">
             </div>
         </div>
-        <label style="font-size: 12px; font-weight: bold; color: #888;">Battiti (BPM)</label>
-        <input type="number" id="bpm" placeholder="es. 70">
+        <div class="grid-2">
+            <div>
+                <label style="font-size: 12px; font-weight: bold; color: #888;">Battiti (BPM)</label>
+                <input type="number" id="bpm" placeholder="es. 70">
+            </div>
+            <div>
+                <label style="font-size: 12px; font-weight: bold; color: #888;">Note (Opzionale)</label>
+                <input type="text" id="nota" placeholder="Es. mal di testa...">
+            </div>
+        </div>
+        
         <button id="btn-salva" onclick="inviaDati()">Salva Dati</button>
         <p id="status"></p>
     </div>
@@ -139,13 +148,13 @@
             const sis = parseInt(document.getElementById('sis').value);
             const dia = parseInt(document.getElementById('dia').value);
             const bpm = parseInt(document.getElementById('bpm').value) || 0;
+            const nota = document.getElementById('nota').value.trim();
             const statusEl = document.getElementById('status');
             const btnSalva = document.getElementById('btn-salva');
 
             if (!user || !repo || !token) { statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
             if (!sis || !dia) { statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
-            // Blocca il pulsante per evitare invii doppi
             btnSalva.disabled = true;
             btnSalva.innerText = '⏳ Invio in corso...';
             statusEl.innerText = '';
@@ -156,7 +165,12 @@
 
             const data = new Date();
             const titolo = `Misurazione: ${data.toLocaleString('it-IT')}`;
-            const corpo = `MAX: ${sis} | MIN: ${dia} | BPM: ${bpm}`;
+            
+            // Aggiungiamo la nota al corpo del messaggio se presente
+            let corpo = `MAX: ${sis} | MIN: ${dia} | BPM: ${bpm}`;
+            if (nota !== "") {
+                corpo += ` | Nota: ${nota}`;
+            }
 
             try {
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues`, {
@@ -168,14 +182,16 @@
                 if (response.ok) {
                     statusEl.style.color = '#2a9d8f';
                     statusEl.innerText = '✅ Salvato!';
-                    document.getElementById('sis').value = ''; document.getElementById('dia').value = ''; document.getElementById('bpm').value = '';
+                    document.getElementById('sis').value = ''; 
+                    document.getElementById('dia').value = ''; 
+                    document.getElementById('bpm').value = '';
+                    document.getElementById('nota').value = '';
                     setTimeout(() => { statusEl.innerText = ''; }, 3000);
-                    await caricaStorico(); // Ricarica lo storico automaticamente
+                    await caricaStorico(); 
                 } else { statusEl.innerText = `❌ Errore API`; }
             } catch (error) { 
                 statusEl.innerText = `❌ Errore di Rete`; 
             } finally {
-                // Sblocca il pulsante
                 btnSalva.disabled = false;
                 btnSalva.innerText = 'Salva Dati';
             }
@@ -190,19 +206,17 @@
 
             if (!user || !token) return;
             
-            // Blocca il pulsante e mostra il caricamento
             btnSync.disabled = true;
             btnSync.innerText = '⏳ Sincronizzazione...';
             listaEl.innerHTML = '<em>Scaricamento dati freschi da GitHub... ⏳</em>';
 
             try {
-                // IL TRUCCHETTO: Aggiungiamo il timestamp corrente (?t=...) per ingannare la cache del browser!
                 const timestamp = new Date().getTime();
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${timestamp}`, {
                     headers: { 
                         'Authorization': `Bearer ${token}`, 
                         'Accept': 'application/vnd.github.v3+json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate', // Forza il ricaricamento
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache'
                     }
                 });
@@ -222,13 +236,16 @@
                     const matchMax = issue.body.match(/(?:MAX|Sistolica).*?(\d+)/i);
                     const matchMin = issue.body.match(/(?:MIN|Diastolica).*?(\d+)/i);
                     const matchBpm = issue.body.match(/(?:BPM|Battiti).*?(\d+)/i);
+                    // Regex per catturare la nota
+                    const matchNota = issue.body.match(/(?:Nota).*?:\s*(.*)/i);
 
                     const max = matchMax ? parseInt(matchMax[1]) : 0;
                     const min = matchMin ? parseInt(matchMin[1]) : 0;
                     const bpm = matchBpm ? parseInt(matchBpm[1]) : 0;
+                    const notaText = matchNota ? matchNota[1] : '';
 
                     if(max > 0 && min > 0) {
-                        appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
+                        appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, nota: notaText, label: labelName, rawDate: new Date(issue.created_at) });
                         sumMax += max; sumMin += min;
                         
                         if (labelName.includes('Alta')) conteggio.alta++;
@@ -270,12 +287,16 @@
                         }
                     }
 
+                    // Aggiunge la nota nell'interfaccia se esiste
+                    let notaHTML = row.nota ? `<div style="margin-top: 6px; font-size: 13px; color: #666;">📝 <i>${row.nota}</i></div>` : '';
+
                     htmlContent += `
                     <div class="report-item" style="border-left-color: ${color}">
                         <span class="badge" style="background: ${color}20; color: ${color};">${row.label}</span>
                         <strong>${row.data}</strong><br>
                         Sistolica: <b>${row.max}</b> | Diastolica: <b>${row.min}</b> ${row.bpm ? `| BPM: <b>${row.bpm}</b>` : ''}
                         <div style="margin-top: 5px;">${trendHTML}</div>
+                        ${notaHTML}
                     </div>`;
                 });
 
@@ -288,7 +309,6 @@
             } catch (error) { 
                 listaEl.innerHTML = '❌ Errore caricamento.'; 
             } finally {
-                // Sblocca il pulsante alla fine
                 btnSync.disabled = false;
                 btnSync.innerText = '🔄 Sincronizza Dati';
             }
@@ -369,11 +389,19 @@
             
             const canvas = document.getElementById('lineChart');
             const imgData = canvas.toDataURL('image/png');
-            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Esito</th></tr>`;
+            // Ho aggiunto la colonna "Note" alla tabella
+            let tableHTML = `<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;"><tr style="background-color: #f1faee;"><th>Data</th><th>MAX</th><th>MIN</th><th>BPM</th><th>Note</th><th>Esito</th></tr>`;
             
             appData.forEach(row => {
                 let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                tableHTML += `<tr><td>${row.data}</td><td><b>${row.max}</b></td><td><b>${row.min}</b></td><td>${row.bpm}</td><td style="color: ${colColor}; font-weight: bold;">${row.label}</td></tr>`;
+                tableHTML += `<tr>
+                    <td>${row.data}</td>
+                    <td><b>${row.max}</b></td>
+                    <td><b>${row.min}</b></td>
+                    <td>${row.bpm || '-'}</td>
+                    <td style="font-style: italic; color: #555;">${row.nota || '-'}</td>
+                    <td style="color: ${colColor}; font-weight: bold;">${row.label}</td>
+                </tr>`;
             });
             tableHTML += `</table>`;
 
