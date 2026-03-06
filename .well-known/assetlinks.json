@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.marconeri.heartmonitor",
+        "sha256_cert_fingerprints": ["96:C7:98:AC:69:7D:6A:8A:73:CC:63:A2:92:4C:78:A6:85:70:66:B0:85:21:9B:AE:7C:FC:97:98:70:6C:1F:07"]
+      }
+    }]
