@@ -10,7 +10,8 @@
     <link rel="apple-touch-icon" href="icona.png">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
 
     <style>
         :root { --primary: #e63946; --secondary: #457b9d; --bg: #f8f9fa; --text: #1d3557; }
@@ -33,6 +34,7 @@
         .stats-box div { font-size: 24px; font-weight: bold; color: var(--text); }
         .stats-box span { font-size: 12px; color: #6c757d; text-transform: uppercase; }
         canvas { max-width: 100%; margin-top: 15px; background: white;}
+        .chart-title { text-align: center; font-size: 14px; color: #6c757d; margin-top: 25px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;}
     </style>
 </head>
 <body>
@@ -73,7 +75,12 @@
             <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
         </div>
-        <canvas id="myChart" style="background-color: white;"></canvas> 
+        
+        <div class="chart-title">Andamento nel tempo</div>
+        <canvas id="myChart" style="background-color: white; margin-bottom: 20px;"></canvas> 
+        
+        <div class="chart-title">Distribuzione Esiti</div>
+        <canvas id="pieChart" style="background-color: white; max-height: 220px;"></canvas> 
     </div>
 
     <div class="card">
@@ -91,6 +98,7 @@
     <script>
         let appData = []; 
         let chartInstance = null;
+        let pieChartInstance = null;
 
         window.onload = () => {
             const user = localStorage.getItem('gh_user');
@@ -204,6 +212,7 @@
                     document.getElementById('avg-max').innerText = '-';
                     document.getElementById('avg-min').innerText = '-';
                     if(chartInstance) chartInstance.destroy();
+                    if(pieChartInstance) pieChartInstance.destroy();
                     return;
                 }
 
@@ -221,12 +230,16 @@
 
         function disegnaGrafico() {
             const ctx = document.getElementById('myChart').getContext('2d');
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            
             const labels = appData.map(d => d.data.split(',')[0]); 
             const dataMax = appData.map(d => d.max);
             const dataMin = appData.map(d => d.min);
 
             if(chartInstance) chartInstance.destroy(); 
+            if(pieChartInstance) pieChartInstance.destroy();
 
+            // 1. Grafico a Linee
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -236,12 +249,28 @@
                         { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#457b9d', backgroundColor: '#457b9d', tension: 0.3, fill: false }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    animation: { duration: 0 }, 
-                    scales: { y: { beginAtZero: false } },
-                    plugins: { legend: { position: 'top' } }
-                }
+                options: { responsive: true, animation: { duration: 0 }, plugins: { legend: { position: 'top' } } }
+            });
+
+            // Calcolo dati per la Torta
+            let countAlta = 0, countNormale = 0, countBassa = 0;
+            appData.forEach(d => {
+                if(d.label.includes('Alta')) countAlta++;
+                else if(d.label.includes('Bassa')) countBassa++;
+                else countNormale++;
+            });
+
+            // 2. Grafico a Torta (Doughnut)
+            pieChartInstance = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Alta', 'Normale', 'Bassa'],
+                    datasets: [{
+                        data: [countAlta, countNormale, countBassa],
+                        backgroundColor: ['#e63946', '#2a9d8f', '#e9c46a']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, plugins: { legend: { position: 'bottom' } } }
             });
         }
 
@@ -273,85 +302,75 @@
             }
         }
 
-        // --- FUNZIONE PDF CORRETTA ---
+        // --- FUNZIONE PDF NATIVO (Risolve il problema della pagina bianca) ---
         function scaricaPDF() {
             if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
 
             const btn = document.querySelector('.btn-export');
             btn.innerText = "⏳ Creazione PDF in corso...";
 
-            const avgMax = document.getElementById('avg-max').innerText;
-            const avgMin = document.getElementById('avg-min').innerText;
-            const canvas = document.getElementById('myChart');
-            const imgData = canvas.toDataURL('image/png', 1.0);
+            // Usiamo un timeout per permettere al pulsante di aggiornare il testo prima di bloccare il telefono
+            setTimeout(() => {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
 
-            let tableHTML = `
-                <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; margin-top: 20px; font-size: 14px;">
-                    <tr style="background-color: #f1faee;">
-                        <th style="padding: 10px;">Data e Ora</th>
-                        <th style="padding: 10px;">MAX</th>
-                        <th style="padding: 10px;">MIN</th>
-                        <th style="padding: 10px;">BPM</th>
-                        <th style="padding: 10px;">Esito</th>
-                    </tr>`;
-
-            const exportData = [...appData].sort((a, b) => b.rawDate - a.rawDate);
-            exportData.forEach(row => {
-                let colColor = row.label.includes('Alta') ? '#e63946' : (row.label.includes('Bassa') ? '#e9c46a' : '#2a9d8f');
-                let labelPulita = row.label.replace(/[^a-zA-Z\s]/g, '').trim(); 
-                
-                tableHTML += `
-                    <tr>
-                        <td style="padding: 10px;">${row.data}</td>
-                        <td style="padding: 10px; font-weight: bold;">${row.max}</td>
-                        <td style="padding: 10px; font-weight: bold;">${row.min}</td>
-                        <td style="padding: 10px;">${row.bpm}</td>
-                        <td style="padding: 10px; color: ${colColor}; font-weight: bold;">${labelPulita}</td>
-                    </tr>`;
-            });
-            tableHTML += `</table>`;
-
-            // Creiamo la struttura del PDF come testo HTML puro
-            const pdfContent = `
-                <div style="padding: 20px; font-family: Helvetica, Arial, sans-serif; color: #1d3557; background: white;">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <h1 style="color: #e63946; margin-bottom: 5px;">Referto Medico</h1>
-                        <p style="color: #6c757d; margin-top: 0;">Generato il: ${new Date().toLocaleDateString('it-IT')}</p>
-                    </div>
-                    <hr style="border: 1px solid #ced4da; margin-bottom: 20px;">
+                    // Intestazione
+                    doc.setFontSize(20);
+                    doc.setTextColor(230, 57, 70);
+                    doc.text("Referto Medico - Andamento Pressorio", 105, 20, { align: "center" });
                     
-                    <h3 style="margin-bottom: 10px;">Riepilogo Generale</h3>
-                    <ul style="line-height: 1.6; margin-top: 0;">
-                        <li><b>Media Sistolica (MAX):</b> ${avgMax}</li>
-                        <li><b>Media Diastolica (MIN):</b> ${avgMin}</li>
-                        <li><b>Misurazioni Totali:</b> ${appData.length}</li>
-                    </ul>
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')}`, 105, 28, { align: "center" });
 
-                    <h3 style="margin-bottom: 10px;">Grafico Andamento</h3>
-                    <div style="text-align: center;">
-                        <img src="${imgData}" style="max-width: 100%; height: auto; border: 1px solid #eee; padding: 10px;">
-                    </div>
+                    // Riepilogo
+                    doc.setFontSize(14);
+                    doc.setTextColor(29, 53, 87);
+                    doc.text("Riepilogo Generale", 14, 45);
+                    
+                    doc.setFontSize(12);
+                    doc.setTextColor(50, 50, 50);
+                    const avgMax = document.getElementById('avg-max').innerText;
+                    const avgMin = document.getElementById('avg-min').innerText;
+                    doc.text(`- Media Sistolica (MAX): ${avgMax}`, 14, 55);
+                    doc.text(`- Media Diastolica (MIN): ${avgMin}`, 14, 62);
+                    doc.text(`- Misurazioni Totali: ${appData.length}`, 14, 69);
 
-                    <h3 style="margin-top: 20px; margin-bottom: 10px;">Dettaglio Storico Misurazioni</h3>
-                    ${tableHTML}
-                </div>
-            `;
+                    // Aggiunta Immagine Linee
+                    const canvasLine = document.getElementById('myChart');
+                    const imgLine = canvasLine.toDataURL('image/png', 1.0);
+                    doc.addImage(imgLine, 'PNG', 14, 80, 180, 80);
 
-            const opt = {
-                margin:       10,
-                filename:     `Referto_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 }, // Ho tolto i parametri che causavano il bug della pagina bianca
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+                    // Aggiunta Immagine Torta (Centrata)
+                    const canvasPie = document.getElementById('pieChart');
+                    const imgPie = canvasPie.toDataURL('image/png', 1.0);
+                    doc.addImage(imgPie, 'PNG', 70, 165, 70, 70);
 
-            // Diamo in pasto la stringa HTML direttamente alla libreria PDF
-            html2pdf().set(opt).from(pdfContent).save().then(() => {
-                btn.innerText = "📄 Scarica PDF"; 
-            }).catch(err => {
-                btn.innerText = "📄 Scarica PDF";
-                alert("Errore nella generazione del PDF. Riprova.");
-            });
+                    // Creazione della Tabella Storico usando AutoTable
+                    const tableData = [...appData].sort((a, b) => b.rawDate - a.rawDate).map(row => {
+                        let labelPulita = row.label.replace(/[^a-zA-Z\s]/g, '').trim(); 
+                        return [row.data, row.max, row.min, row.bpm, labelPulita];
+                    });
+
+                    doc.autoTable({
+                        startY: 245, // Parte sotto ai grafici (se non c'è spazio va in pagina 2 da sola)
+                        head: [['Data e Ora', 'Sistolica', 'Diastolica', 'BPM', 'Esito']],
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { fillColor: [42, 157, 143] },
+                        styles: { halign: 'center' }
+                    });
+
+                    // Scarica il file
+                    doc.save(`Referto_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
+                    btn.innerText = "📄 Scarica PDF"; 
+
+                } catch(error) {
+                    alert("Errore nella generazione del PDF: " + error.message);
+                    btn.innerText = "📄 Scarica PDF";
+                }
+            }, 500);
         }
     </script>
 </body>
