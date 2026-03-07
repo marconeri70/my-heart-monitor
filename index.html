@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Heart Monitor Pro</title>
+    <title>Heart Monitor Ultra</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ff416c">
+    <meta name="theme-color" content="#FF2A5F">
     <link rel="apple-touch-icon" href="icona.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
@@ -16,135 +18,156 @@
 
     <style>
         :root { 
-            --primary-grad: linear-gradient(135deg, #ff4b2b, #ff416c);
-            --secondary-grad: linear-gradient(135deg, #36D1DC, #5B86E5);
-            --export-grad: linear-gradient(135deg, #11998e, #38ef7d);
-            --danger-grad: linear-gradient(135deg, #ED213A, #93291E);
-            --bg-color: #f4f7f6;
-            --text-main: #2b2d42;
-            --text-muted: #8d99ae;
+            --primary: #FF2A5F; 
+            --primary-glow: rgba(255, 42, 95, 0.4);
+            --secondary: #007AFF; 
+            --success: #34C759;
+            --warning: #FF9500;
+            --bg-color: #F2F2F7;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-dark: #1C1C1E;
+            --text-light: #8E8E93;
         }
         
-        /* Sfondo animato super elegante */
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            font-family: 'Nunito', sans-serif; 
             padding: 15px; max-width: 500px; margin: auto; 
-            background: linear-gradient(-45deg, #f3e7e9, #e3eeff, #f3e7e9);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            color: var(--text-main); padding-bottom: 50px; 
+            background: linear-gradient(135deg, #F9F9FF 0%, #E6E6FA 100%);
+            background-attachment: fixed;
+            color: var(--text-dark); padding-bottom: 60px; 
             min-height: 100vh;
-        }
-        
-        /* Animazione Sfondo */
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .header { text-align: center; margin-bottom: 25px; margin-top: 15px; animation: fadeInDown 0.8s cubic-bezier(0.25, 1, 0.5, 1); }
-        .header h1 { margin: 0; font-size: 28px; font-weight: 800; color: #ff416c; letter-spacing: -0.5px; }
+        /* HEADER E CUORE PULSANTE */
+        .header { text-align: center; margin: 20px 0 30px 0; animation: fadeInDown 0.6s ease-out; }
+        .header h1 { margin: 0; font-size: 32px; font-weight: 900; color: var(--primary); letter-spacing: -1px; display: flex; align-items: center; justify-content: center; gap: 10px;}
         
-        /* IL CUORE CHE PULSA */
+        .heart-container {
+            position: relative;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
         .heart-icon {
-            display: inline-block;
+            font-size: 36px;
             animation: heartbeat 1.2s infinite;
-            filter: drop-shadow(0 0 8px rgba(255, 65, 108, 0.5));
+            filter: drop-shadow(0 0 12px var(--primary-glow));
+            z-index: 2;
+        }
+        .heart-pulse {
+            position: absolute; width: 100%; height: 100%;
+            background: var(--primary); border-radius: 50%;
+            animation: pulse-ring 1.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            z-index: 1; opacity: 0;
         }
 
-        @keyframes heartbeat {
-            0% { transform: scale(1); }
-            14% { transform: scale(1.25); }
-            28% { transform: scale(1); }
-            42% { transform: scale(1.25); }
-            70% { transform: scale(1); }
-        }
+        @keyframes heartbeat { 0% { transform: scale(0.95); } 15% { transform: scale(1.15); } 30% { transform: scale(0.95); } 45% { transform: scale(1.15); } 100% { transform: scale(0.95); } }
+        @keyframes pulse-ring { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* Effetto Glassmorphism per le Card */
+        /* CARD STILE APPLE/MODERNO */
         .card { 
-            background: rgba(255, 255, 255, 0.75); 
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 24px; border-radius: 20px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8); 
-            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.4); 
-            animation: fadeInUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) backwards;
+            background: var(--card-bg); 
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            padding: 24px; border-radius: 24px; 
+            box-shadow: 0 16px 32px rgba(0,0,0,0.04), inset 0 0 0 1px rgba(255,255,255,0.6); 
+            margin-bottom: 24px; 
+            animation: fadeInUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
         }
-        
         .card:nth-child(2) { animation-delay: 0.1s; }
         .card:nth-child(3) { animation-delay: 0.2s; }
         .card:nth-child(4) { animation-delay: 0.3s; }
 
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         
-        /* Input moderni in stile Neumorfismo leggero */
+        /* INPUT DA WOW */
+        .input-group { margin-bottom: 16px; }
+        .input-label { font-size: 13px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; display: block; padding-left: 4px;}
         input { 
-            width: 100%; padding: 15px; margin: 8px 0 18px 0; box-sizing: border-box; 
-            border: none; border-radius: 12px; font-size: 16px; font-weight: 500;
+            width: 100%; padding: 16px; box-sizing: border-box; 
+            border: 2px solid transparent; border-radius: 16px; font-size: 18px; font-weight: 800; font-family: 'Nunito', sans-serif;
             background: rgba(255, 255, 255, 0.9);
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.03), 0 1px 0 rgba(255,255,255,1);
-            color: var(--text-main);
-            transition: all 0.3s ease; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02), inset 0 2px 4px rgba(0,0,0,0.02);
+            color: var(--text-dark); transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
         }
-        input:focus { 
-            outline: none; 
-            background: #fff; 
-            box-shadow: 0 0 0 3px rgba(255, 65, 108, 0.2), inset 0 1px 2px rgba(0,0,0,0.02); 
-            transform: translateY(-2px);
-        }
-        input::placeholder { color: #adb5bd; font-weight: 400;}
+        input:focus { outline: none; border-color: rgba(255, 42, 95, 0.3); background: #fff; box-shadow: 0 8px 20px rgba(255, 42, 95, 0.15), inset 0 0 0 1px var(--primary); transform: translateY(-2px); }
+        input::placeholder { color: #C7C7CC; font-weight: 600;}
 
-        /* Etichette degli input */
-        .input-label { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-left: 5px; }
-
-        /* Pulsanti WOW */
+        /* PULSANTI */
         button { 
-            width: 100%; padding: 16px; margin: 10px 0; 
-            background: var(--primary-grad); 
-            color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 800; 
-            letter-spacing: 0.5px; text-transform: uppercase;
-            cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
-            box-shadow: 0 8px 20px rgba(255, 65, 108, 0.3); 
-            position: relative; overflow: hidden;
+            width: 100%; padding: 18px; margin: 10px 0; 
+            background: linear-gradient(135deg, #FF416C, #FF2A5F); 
+            color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 900; 
+            letter-spacing: 1px; text-transform: uppercase; font-family: 'Nunito', sans-serif;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            box-shadow: 0 10px 20px var(--primary-glow); 
         }
-        button:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(255, 65, 108, 0.4); }
-        button:active { transform: translateY(1px); box-shadow: 0 4px 10px rgba(255, 65, 108, 0.3); }
+        button:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 25px rgba(255, 42, 95, 0.5); }
+        button:active { transform: translateY(2px) scale(0.98); box-shadow: 0 5px 10px var(--primary-glow); }
         
-        .btn-secondary { background: var(--secondary-grad); box-shadow: 0 8px 20px rgba(91, 134, 229, 0.3); }
-        .btn-secondary:hover { box-shadow: 0 12px 25px rgba(91, 134, 229, 0.4); }
-        .btn-export { background: var(--export-grad); box-shadow: 0 8px 20px rgba(56, 239, 125, 0.3); }
-        .btn-export:hover { box-shadow: 0 12px 25px rgba(56, 239, 125, 0.4); }
-        .btn-danger { background: var(--danger-grad); margin-top: 0; box-shadow: 0 8px 20px rgba(237, 33, 58, 0.3); }
-        .btn-danger:hover { box-shadow: 0 12px 25px rgba(237, 33, 58, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #4A90E2, #007AFF); box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3); }
+        .btn-secondary:hover { box-shadow: 0 15px 25px rgba(0, 122, 255, 0.4); }
+        .btn-export { background: linear-gradient(135deg, #34C759, #28A745); box-shadow: 0 10px 20px rgba(52, 199, 89, 0.3); }
+        .btn-export:hover { box-shadow: 0 15px 25px rgba(52, 199, 89, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #FF3B30, #D90429); box-shadow: 0 10px 20px rgba(255, 59, 48, 0.3); }
 
-        h2 { font-size: 18px; margin-top: 0; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text-main); font-weight: 800;}
-        #status { font-weight: bold; text-align: center; margin-top: 10px; font-size: 14px; height: 20px; transition: 0.3s;}
+        h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
+        #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
         
-        /* Lista Dati Ridisegnata */
+        /* ARCHIVIO E VALORI EVIDENZIATI */
         .report-item { 
-            border-left: 6px solid #ced4da; padding: 15px; margin-bottom: 15px; 
-            background: rgba(255,255,255,0.8); border-radius: 0 12px 12px 0; font-size: 14px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: 0.3s;
+            padding: 18px; margin-bottom: 16px; 
+            background: #fff; border-radius: 20px; font-size: 15px; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.04); transition: 0.3s;
+            cursor: pointer; position: relative; overflow: hidden;
+            border: 2px solid transparent;
         }
-        .report-item:hover { transform: translateX(5px); background: #fff;}
-        .badge { padding: 6px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; float: right; text-transform: uppercase; letter-spacing: 0.5px;}
+        .report-item:hover { transform: scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.05);}
+        .report-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 6px 0 0 6px; }
+        .ri-alta::before { background: var(--primary); }
+        .ri-normale::before { background: var(--success); }
+        .ri-bassa::before { background: var(--warning); }
         
-        /* Box Medie WOW */
+        .badge { padding: 6px 14px; border-radius: 12px; font-weight: 900; font-size: 12px; float: right; text-transform: uppercase; letter-spacing: 1px;}
+        
+        /* HIGHLIGHT COLORI TESTO */
+        .text-alta { color: var(--primary); font-weight: 900; background: rgba(255,42,95,0.1); padding: 2px 6px; border-radius: 6px;}
+        .text-normale { color: var(--success); font-weight: 900; background: rgba(52,199,89,0.1); padding: 2px 6px; border-radius: 6px;}
+        .text-bassa { color: var(--warning); font-weight: 900; background: rgba(255,149,0,0.1); padding: 2px 6px; border-radius: 6px;}
+        
+        /* BOX MEDIE */
         .stats-box { 
-            text-align: center; padding: 20px 10px; 
-            background: linear-gradient(135deg, #ffffff, #f8f9fa); 
-            border-radius: 16px; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.04), inset 0 1px 0 #fff;
-            border: 1px solid rgba(0,0,0,0.02);
-            transition: 0.3s;
+            text-align: center; padding: 20px; 
+            background: #fff; border-radius: 20px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.02); transition: 0.3s;
         }
-        .stats-box:hover { transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0,0,0,0.08); }
-        .stats-box div { font-size: 32px; font-weight: 900; background: var(--primary-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 5px;}
-        .stats-box span { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;}
+        .stats-box:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.06); }
+        .stats-box div { font-size: 38px; font-weight: 900; color: var(--text-dark); margin-top: 5px; line-height: 1;}
+        .stats-box span { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: 900; letter-spacing: 1.5px;}
         
         canvas { max-width: 100%; margin-top: 15px; background: transparent; }
-        .chart-title { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 30px; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;}
+        .chart-title { text-align: center; font-size: 13px; color: var(--text-light); margin-top: 35px; margin-bottom: 5px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;}
+
+        /* MODAL (POPUP) STILE */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: #fff; padding: 30px; border-radius: 28px; width: 85%; max-width: 400px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-align: center;
+        }
+        .modal-overlay.active { opacity: 1; display: flex; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        
+        .modal-title { font-size: 22px; font-weight: 900; color: var(--text-dark); margin-bottom: 15px; }
+        .modal-body { font-size: 16px; color: var(--text-dark); line-height: 1.6; margin-bottom: 25px; text-align: left;}
+        .modal-body b { color: var(--primary); }
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
@@ -153,37 +176,51 @@
 <body>
 
     <div class="header">
-        <h1><span class="heart-icon">❤️</span> My Heart Monitor</h1>
+        <h1>
+            <div class="heart-container">
+                <div class="heart-pulse"></div>
+                <div class="heart-icon">❤️</div>
+            </div>
+            Heart Monitor
+        </h1>
     </div>
 
     <div class="card" id="config-card" style="display:none;">
         <h2>⚙️ Configurazione</h2>
-        <input type="text" id="username" placeholder="Username (es. marconeri70)">
-        <input type="text" id="repo" placeholder="Repo (es. my-heart-monitor)">
-        <input type="password" id="token" placeholder="Token GitHub">
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Username (es. marconeri70)">
+        </div>
+        <div class="input-group">
+            <input type="text" id="repo" placeholder="Repo (es. my-heart-monitor)">
+        </div>
+        <div class="input-group">
+            <input type="password" id="token" placeholder="Token GitHub">
+        </div>
         <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni</button>
     </div>
 
     <div class="card">
         <h2>📝 Nuova Misurazione</h2>
         <div class="grid-2">
-            <div>
-                <div class="input-label">Sistolica (MAX)</div>
+            <div class="input-group">
+                <span class="input-label">Sistolica (MAX)</span>
                 <input type="number" id="sis" placeholder="es. 120">
             </div>
-            <div>
-                <div class="input-label">Diastolica (MIN)</div>
+            <div class="input-group">
+                <span class="input-label">Diastolica (MIN)</span>
                 <input type="number" id="dia" placeholder="es. 80">
             </div>
         </div>
-        <div class="input-label">Battiti al minuto (BPM)</div>
-        <input type="number" id="bpm" placeholder="es. 70">
+        <div class="input-group">
+            <span class="input-label">Battiti al minuto (BPM)</span>
+            <input type="number" id="bpm" placeholder="es. 70">
+        </div>
         <button onclick="inviaDati()">Salva Dati</button>
-        <p id="status"></p>
+        <div id="status"></div>
     </div>
 
     <div class="card">
-        <h2>📈 Analisi e Andamento</h2>
+        <h2>📈 Analisi Dati</h2>
         <div class="grid-2" id="medie-box" style="margin-bottom: 15px;">
             <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
@@ -198,14 +235,35 @@
 
     <div class="card">
         <h2>📋 Archivio Dati</h2>
-        <button class="btn-secondary" onclick="caricaStorico()">🔄 Aggiorna Dati</button>
+        <button class="btn-secondary" onclick="caricaStorico()">🔄 Sincronizza Dati</button>
         
         <div class="grid-2" style="margin-top: 15px;">
-            <button class="btn-export" onclick="scaricaPDF()">📄 Scarica PDF</button>
-            <button class="btn-danger" onclick="azzeraArchivio()">🗑️ Azzera Tutto</button>
+            <button class="btn-export" onclick="apriModalPDF()">📄 Scarica PDF</button>
+            <button class="btn-danger" onclick="azzeraArchivio()">🗑️ Azzera</button>
         </div>
 
         <div id="lista-storico" style="margin-top: 20px;"></div>
+    </div>
+
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">🩺 Analisi Misurazione</div>
+            <div class="modal-body" id="infoModalBody">
+                </div>
+            <button onclick="chiudiModal('infoModal')">Ho capito</button>
+        </div>
+    </div>
+
+    <div id="pdfModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">📄 Generazione Referto</div>
+            <div class="modal-body" style="text-align: center;">
+                Inserisci il nome del paziente per intestare il documento.
+            </div>
+            <input type="text" id="pdfNome" placeholder="es. Mario Rossi" style="margin-bottom: 20px;">
+            <button class="btn-export" onclick="confermaPDF()">Scarica Ora</button>
+            <button class="btn-secondary" style="background: #8E8E93; box-shadow: none;" onclick="chiudiModal('pdfModal')">Annulla</button>
+        </div>
     </div>
 
     <script>
@@ -241,11 +299,11 @@
             const bpm = parseInt(document.getElementById('bpm').value) || 0;
             const statusEl = document.getElementById('status');
 
-            if (!user || !repo || !token) { statusEl.style.color='#ED213A'; statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
-            if (!sis || !dia) { statusEl.style.color='#ED213A'; statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
+            if (!user || !repo || !token) { statusEl.style.color='#FF3B30'; statusEl.innerText = '⚠️ Configurazione mancante.'; return; }
+            if (!sis || !dia) { statusEl.style.color='#FF3B30'; statusEl.innerText = '⚠️ Inserisci MAX e MIN.'; return; }
 
-            statusEl.style.color='#2b2d42';
-            statusEl.innerText = '⏳ Salvataggio in corso...';
+            statusEl.style.color='#007AFF';
+            statusEl.innerText = '⏳ Sincronizzazione in corso...';
             
             let label = "🟢 Normale";
             if (sis >= 135 || dia >= 85) label = "🔴 Alta";
@@ -263,15 +321,17 @@
                 });
 
                 if (response.ok) {
-                    statusEl.style.color = '#11998e';
-                    statusEl.innerText = '✅ Dato Salvato con successo!';
+                    statusEl.style.color = '#34C759';
+                    statusEl.innerText = '✅ Salvato con successo!';
                     document.getElementById('sis').value = ''; document.getElementById('dia').value = ''; document.getElementById('bpm').value = '';
                     setTimeout(() => { statusEl.innerText = ''; }, 4000);
-                    caricaStorico(); 
+                    
+                    // Aspettiamo mezzo secondo per dare tempo a GitHub di elaborare, poi ricarichiamo
+                    setTimeout(caricaStorico, 500); 
                 } else {
-                    statusEl.style.color = '#ED213A'; statusEl.innerText = `❌ Errore API`;
+                    statusEl.style.color = '#FF3B30'; statusEl.innerText = `❌ Errore API`;
                 }
-            } catch (error) { statusEl.style.color = '#ED213A'; statusEl.innerText = `❌ Errore di rete`; }
+            } catch (error) { statusEl.style.color = '#FF3B30'; statusEl.innerText = `❌ Errore di rete`; }
         }
 
         async function caricaStorico() {
@@ -281,10 +341,13 @@
             const listaEl = document.getElementById('lista-storico');
 
             if (!user || !repo || !token) return;
-            listaEl.innerHTML = '<div style="text-align:center; padding: 20px; font-weight:bold;"><em>Sincronizzazione... ⏳</em></div>';
+            listaEl.innerHTML = '<div style="text-align:center; padding: 20px; font-weight:800; color:#007AFF;"><em>Sincronizzazione... ⏳</em></div>';
 
             try {
-                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100`, {
+                // IL TRUCCO DEL CACHE-BUSTER: Aggiungendo un parametro 't' con l'ora esatta,
+                // forziamo GitHub a darci SEMPRE i dati aggiornati senza usare la memoria interna!
+                const cacheBuster = new Date().getTime();
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${cacheBuster}`, {
                     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
                 });
                 
@@ -314,20 +377,28 @@
                         sumMax += max; sumMin += min; count++;
                     }
 
-                    let color = labelName.includes('Alta') ? '#ff416c' : (labelName.includes('Bassa') ? '#F2C94C' : '#11998e');
+                    // Logica per evidenziare i singoli valori
+                    let classSis = max >= 135 ? 'text-alta' : (max <= 90 ? 'text-bassa' : 'text-normale');
+                    let classDia = min >= 85 ? 'text-alta' : (min <= 60 ? 'text-bassa' : 'text-normale');
+
+                    let colorTheme = labelName.includes('Alta') ? '#FF2A5F' : (labelName.includes('Bassa') ? '#FF9500' : '#34C759');
+                    let riClass = labelName.includes('Alta') ? 'ri-alta' : (labelName.includes('Bassa') ? 'ri-bassa' : 'ri-normale');
                     
+                    // Nota: ho aggiunto onclick per aprire il popup spiegazione!
                     htmlContent += `
-                    <div class="report-item" style="border-left-color: ${color}">
-                        <span class="badge" style="background: ${color}20; color: ${color};">${labelName}</span>
-                        <strong style="color: var(--text-main);">${dataTitolo}</strong><br>
-                        <div style="margin-top: 5px; color: var(--text-muted); font-weight: 500;">
-                            Sistolica: <b style="color:var(--text-main)">${max}</b> | Diastolica: <b style="color:var(--text-main)">${min}</b> ${bpm ? `| BPM: <b style="color:var(--text-main)">${bpm}</b>` : ''}
+                    <div class="report-item ${riClass}" onclick="apriDettagli(${max}, ${min}, ${bpm}, '${labelName}')">
+                        <span class="badge" style="background: ${colorTheme}20; color: ${colorTheme};">${labelName}</span>
+                        <strong style="color: var(--text-dark); font-size: 16px;">${dataTitolo}</strong><br>
+                        <div style="margin-top: 10px; color: var(--text-light); font-weight: 600; font-size: 14px;">
+                            Sist: <span class="${classSis}">${max}</span> &nbsp;|&nbsp; 
+                            Diast: <span class="${classDia}">${min}</span> 
+                            ${bpm ? `&nbsp;|&nbsp; BPM: <b style="color:var(--text-dark)">${bpm}</b>` : ''}
                         </div>
                     </div>`;
                 });
 
                 if (appData.length === 0) {
-                    listaEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted); font-weight:bold;">Archivio vuoto. Inizia a misurare!</div>';
+                    listaEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-light); font-weight:800;">Nessun dato in archivio.</div>';
                     document.getElementById('avg-max').innerText = '-';
                     document.getElementById('avg-min').innerText = '-';
                     if(chartInstance) chartInstance.destroy();
@@ -343,39 +414,91 @@
                 disegnaGrafico();
 
             } catch (error) {
-                listaEl.innerHTML = '<div style="text-align:center; color: #ED213A; font-weight:bold;">❌ Impossibile caricare i dati.</div>';
+                listaEl.innerHTML = '<div style="text-align:center; color: #FF3B30; font-weight:800;">❌ Impossibile caricare i dati.</div>';
             }
+        }
+
+        // FUNZIONI PER I POPUP
+        function apriModal(id) {
+            const modal = document.getElementById(id);
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+
+        function chiudiModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        function apriDettagli(max, min, bpm, label) {
+            let body = document.getElementById('infoModalBody');
+            
+            let html = `<div style="text-align:center; margin-bottom: 15px; font-size: 20px;"><b>${max}</b> / <b>${min}</b> ${bpm ? `(❤️ ${bpm} bpm)` : ''}</div>`;
+            
+            // Spiegazione Sistolica
+            if (max >= 135) html += `🔴 <b>Sistolica (Massima) Alta:</b> Il valore ${max} indica che la pressione nelle arterie durante il battito cardiaco è superiore alla soglia ottimale.<br><br>`;
+            else if (max <= 90) html += `🟡 <b>Sistolica (Massima) Bassa:</b> Il valore ${max} è inferiore alla norma. Può essere normale per alcuni, ma a volte causa spossatezza.<br><br>`;
+            else html += `🟢 <b>Sistolica (Massima) Normale:</b> Il valore ${max} rientra nei parametri ottimali di salute.<br><br>`;
+
+            // Spiegazione Diastolica
+            if (min >= 85) html += `🔴 <b>Diastolica (Minima) Alta:</b> Il valore ${min} indica una resistenza arteriosa elevata quando il cuore è a riposo tra un battito e l'altro.<br>`;
+            else if (min <= 60) html += `🟡 <b>Diastolica (Minima) Bassa:</b> Il valore ${min} è considerato basso. È consigliabile idratarsi bene.<br>`;
+            else html += `🟢 <b>Diastolica (Minima) Normale:</b> Il valore ${min} è perfetto, il cuore si rilassa correttamente tra i battiti.<br>`;
+
+            body.innerHTML = html;
+            apriModal('infoModal');
+        }
+
+        function apriModalPDF() {
+            if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
+            document.getElementById('pdfNome').value = ""; // Pulisce il campo
+            apriModal('pdfModal');
+        }
+
+        function confermaPDF() {
+            const nome = document.getElementById('pdfNome').value.trim();
+            if(!nome) {
+                alert("Per favore, inserisci un nome per il referto.");
+                return;
+            }
+            chiudiModal('pdfModal');
+            scaricaPDF(nome);
         }
 
         function disegnaGrafico() {
             const ctx = document.getElementById('myChart').getContext('2d');
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             
-            const labels = appData.map(d => d.data.split(',')[0]); 
+            const labels = appData.map(d => d.data.split(',')[0].substring(0,5)); // Mostra solo Giorno/Mese per pulizia
             const dataMax = appData.map(d => d.max);
             const dataMin = appData.map(d => d.min);
 
             if(chartInstance) chartInstance.destroy(); 
             if(pieChartInstance) pieChartInstance.destroy();
 
+            // Font personalizzato per i grafici
+            Chart.defaults.font.family = "'Nunito', sans-serif";
+            Chart.defaults.font.weight = "800";
+
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Sistolica (MAX)', data: dataMax, borderColor: '#ff416c', backgroundColor: 'rgba(255, 65, 108, 0.15)', tension: 0.4, fill: true, pointBackgroundColor: '#ff416c', pointRadius: 4, pointHoverRadius: 6 },
-                        { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#5B86E5', backgroundColor: 'rgba(91, 134, 229, 0.15)', tension: 0.4, fill: true, pointBackgroundColor: '#5B86E5', pointRadius: 4, pointHoverRadius: 6 }
+                        { label: 'Sistolica (MAX)', data: dataMax, borderColor: '#FF2A5F', backgroundColor: 'rgba(255, 42, 95, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#FF2A5F', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'},
+                        { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#007AFF', backgroundColor: 'rgba(0, 122, 255, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#007AFF', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'}
                     ]
                 },
                 options: { 
                     responsive: true, 
                     plugins: { 
-                        legend: { position: 'top', labels: { font: { weight: 'bold', family: "system-ui" } } },
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
                         datalabels: { display: false } 
                     },
                     scales: { 
-                        y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.05)' } },
-                        x: { grid: { display: false } }
+                        y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } },
+                        x: { grid: { display: false, drawBorder: false } }
                     }
                 }
             });
@@ -393,21 +516,20 @@
                     labels: ['Alta', 'Normale', 'Bassa'],
                     datasets: [{
                         data: [countAlta, countNormale, countBassa],
-                        backgroundColor: ['#ff416c', '#11998e', '#F2C94C'],
-                        borderWidth: 4,
-                        borderColor: '#ffffff',
-                        hoverOffset: 12
+                        backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'],
+                        borderWidth: 0,
+                        hoverOffset: 8
                     }]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    cutout: '65%', 
+                    cutout: '70%', 
                     plugins: { 
-                        legend: { position: 'bottom', labels: { font: { weight: 'bold', family: "system-ui" } } },
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
                         datalabels: {
                             color: '#ffffff',
-                            font: { weight: '900', size: 16, family: "system-ui" },
+                            font: { weight: '900', size: 16 },
                             formatter: (value, context) => {
                                 if (value === 0) return null;
                                 let sum = 0;
@@ -423,7 +545,7 @@
 
         async function azzeraArchivio() {
             if (appData.length === 0) return;
-            const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio? \nL'operazione chiuderà i record correnti e ripartirai da zero.");
+            const conferma = confirm("⚠️ ATTENZIONE: Sei sicuro di voler azzerare l'archivio?");
             if (!conferma) return;
 
             const user = localStorage.getItem('gh_user');
@@ -431,7 +553,7 @@
             const token = localStorage.getItem('gh_token');
             const listaEl = document.getElementById('lista-storico');
 
-            listaEl.innerHTML = '<div style="text-align:center; padding: 20px; font-weight:bold;"><em>Azzeramento in corso... non chiudere l\'app. ⏳</em></div>';
+            listaEl.innerHTML = '<div style="text-align:center; padding: 20px; font-weight:800; color:#FF3B30;"><em>Azzeramento in corso... ⏳</em></div>';
 
             try {
                 for (let record of appData) {
@@ -441,50 +563,52 @@
                         body: JSON.stringify({ state: 'closed' })
                     });
                 }
-                alert("✅ Archivio azzerato con successo!");
-                caricaStorico();
+                setTimeout(caricaStorico, 1000);
             } catch (error) {
                 alert("❌ Errore durante l'azzeramento.");
                 caricaStorico();
             }
         }
 
-        function scaricaPDF() {
-            if(appData.length === 0) { alert("Nessun dato da esportare!"); return; }
-
-            const btn = document.querySelector('.btn-export');
-            btn.innerText = "⏳ Creazione PDF in corso...";
-
+        // GENERAZIONE PDF AGGIORNATA CON NOME
+        function scaricaPDF(nomePaziente) {
             setTimeout(() => {
                 try {
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
 
+                    // Header
                     doc.setFontSize(22);
-                    doc.setTextColor(255, 65, 108);
+                    doc.setTextColor(255, 42, 95);
                     doc.text("Referto Medico - Andamento Pressorio", 105, 20, { align: "center" });
                     
                     doc.setFontSize(10);
                     doc.setTextColor(100, 100, 100);
                     doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')}`, 105, 28, { align: "center" });
 
+                    // Dati Paziente
                     doc.setFontSize(14);
-                    doc.setTextColor(43, 45, 66);
-                    doc.text("Riepilogo Generale", 14, 45);
-                    
+                    doc.setTextColor(28, 28, 30);
+                    doc.text("Dati Paziente", 14, 45);
+                    doc.setFontSize(12);
+                    doc.setTextColor(50, 50, 50);
+                    doc.text(`- Nome e Cognome: ${nomePaziente.toUpperCase()}`, 14, 53);
+
+                    // Riepilogo
+                    doc.setFontSize(14);
+                    doc.setTextColor(28, 28, 30);
+                    doc.text("Riepilogo Generale", 110, 45);
                     doc.setFontSize(12);
                     doc.setTextColor(50, 50, 50);
                     const avgMax = document.getElementById('avg-max').innerText;
                     const avgMin = document.getElementById('avg-min').innerText;
-                    doc.text(`- Media Sistolica (MAX): ${avgMax}`, 14, 55);
-                    doc.text(`- Media Diastolica (MIN): ${avgMin}`, 14, 62);
-                    doc.text(`- Misurazioni Totali: ${appData.length}`, 14, 69);
+                    doc.text(`- Media Sistolica (MAX): ${avgMax}`, 110, 53);
+                    doc.text(`- Media Diastolica (MIN): ${avgMin}`, 110, 60);
 
-                    // Sfondo bianco garantito per i canvas
+                    // Grafici
                     const canvasLine = document.getElementById('myChart');
                     const canvasPie = document.getElementById('pieChart');
                     
-                    // Creiamo canvas temporanei con sfondo bianco per evitare trasparenze nel PDF
                     const whiteCanvasLine = document.createElement('canvas');
                     whiteCanvasLine.width = canvasLine.width; whiteCanvasLine.height = canvasLine.height;
                     const wctxLine = whiteCanvasLine.getContext('2d');
@@ -500,31 +624,32 @@
                     const imgLine = whiteCanvasLine.toDataURL('image/jpeg', 1.0);
                     const imgPie = whiteCanvasPie.toDataURL('image/jpeg', 1.0);
                     
-                    doc.addImage(imgLine, 'JPEG', 14, 80, 180, 80);
-                    doc.addImage(imgPie, 'JPEG', 70, 165, 70, 70);
+                    doc.addImage(imgLine, 'JPEG', 14, 75, 180, 80);
+                    doc.addImage(imgPie, 'JPEG', 70, 160, 70, 70);
 
+                    // Tabella
                     const tableData = [...appData].sort((a, b) => b.rawDate - a.rawDate).map(row => {
                         let labelPulita = row.label.replace(/[^a-zA-Z\s]/g, '').trim(); 
                         return [row.data, row.max, row.min, row.bpm, labelPulita];
                     });
 
                     doc.autoTable({
-                        startY: 245,
+                        startY: 240,
                         head: [['Data e Ora', 'Sistolica', 'Diastolica', 'BPM', 'Esito']],
                         body: tableData,
                         theme: 'grid',
-                        headStyles: { fillColor: [17, 153, 142] },
-                        styles: { halign: 'center' }
+                        headStyles: { fillColor: [52, 199, 89] },
+                        styles: { halign: 'center', font: "helvetica" }
                     });
 
-                    doc.save(`Referto_Cardiologo_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
-                    btn.innerText = "📄 Scarica PDF"; 
+                    // Nome file con il nome del paziente
+                    let fileNameSafe = nomePaziente.replace(/\s+/g, '_');
+                    doc.save(`Referto_${fileNameSafe}_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
 
                 } catch(error) {
                     alert("Errore nella generazione del PDF: " + error.message);
-                    btn.innerText = "📄 Scarica PDF";
                 }
-            }, 500);
+            }, 300);
         }
     </script>
 </body>
