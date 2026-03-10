@@ -46,32 +46,19 @@
         @keyframes heartbeat { 0% { transform: scale(0.95); } 15% { transform: scale(1.15); } 30% { transform: scale(0.95); } 45% { transform: scale(1.15); } 100% { transform: scale(0.95); } }
         @keyframes pulse-ring { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* NUOVA ANIMAZIONE ECG (MONITOR BATTITO) */
+        /* ANIMAZIONE ECG (MONITOR BATTITO) */
         .ekg-monitor {
-            width: 100%;
-            height: 30px;
-            margin-top: 5px;
-            position: relative;
-            overflow: hidden;
-            /* Crea l'effetto sfumato ai lati */
+            width: 100%; height: 30px; margin-top: 5px; position: relative; overflow: hidden;
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
-            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
-            opacity: 0.9;
+            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%); opacity: 0.9;
         }
         .ekg-line {
-            width: 200%;
-            height: 100%;
-            /* Disegno SVG del battito cardiaco convertito in background per prestazioni massime */
+            width: 200%; height: 100%;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='30' viewBox='0 0 250 30'%3E%3Cpath d='M0,15 L50,15 L55,10 L60,20 L70,2 L80,28 L85,15 L110,15 L115,10 L125,15 L250,15' fill='none' stroke='%23FF2A5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-            background-repeat: repeat-x;
-            background-position: left center;
-            animation: ekgScroll 1.8s linear infinite;
-            filter: drop-shadow(0px 0px 4px rgba(255, 42, 95, 0.7));
+            background-repeat: repeat-x; background-position: left center;
+            animation: ekgScroll 1.8s linear infinite; filter: drop-shadow(0px 0px 4px rgba(255, 42, 95, 0.7));
         }
-        @keyframes ekgScroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-250px); } /* Scorre esattamente della larghezza dell'SVG creando il loop infinito */
-        }
+        @keyframes ekgScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-250px); } }
 
         .card { 
             background: var(--card-bg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -161,7 +148,10 @@
         .stats-box div { font-size: 38px; font-weight: 900; color: var(--text-dark); margin-top: 5px; line-height: 1;}
         .stats-box span { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: 900; letter-spacing: 1.5px;}
         
+        /* EFFETTO GLOW/3D PER IL GRAFICO A TORTA */
         canvas { max-width: 100%; margin-top: 15px; background: transparent; }
+        #pieChart { filter: drop-shadow(0px 12px 20px rgba(0,0,0,0.15)); }
+        
         .chart-title { text-align: center; font-size: 13px; color: var(--text-light); margin-top: 35px; margin-bottom: 5px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;}
 
         /* MODALS (POPUP) */
@@ -192,9 +182,7 @@
             <div class="heart-container"><div class="heart-pulse"></div><div class="heart-icon">❤️</div></div>
             Heart Monitor
         </h1>
-        <div class="ekg-monitor">
-            <div class="ekg-line"></div>
-        </div>
+        <div class="ekg-monitor"><div class="ekg-line"></div></div>
     </div>
 
     <div class="card" id="config-card" style="display:none;">
@@ -219,19 +207,14 @@
     <div class="card">
         <div class="card-header-flex">
             <h2>⏰ Promemoria</h2>
-            
             <div class="dropdown">
                 <button class="menu-btn" onclick="toggleMenu(event, 'promemoriaMenu')">⋮</button>
                 <div id="promemoriaMenu" class="dropdown-content">
-                    <div class="dropdown-item" onclick="apriModal('promemoriaModal'); toggleMenu(event, 'promemoriaMenu')">
-                        ⚙️ Configura Allarmi
-                    </div>
+                    <div class="dropdown-item" onclick="apriModal('promemoriaModal'); toggleMenu(event, 'promemoriaMenu')">⚙️ Configura Allarmi</div>
                 </div>
             </div>
         </div>
-        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">
-            Programma la sveglia del telefono per ricordarti di effettuare le misurazioni.
-        </p>
+        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">Programma la sveglia del telefono per ricordarti di effettuare le misurazioni.</p>
     </div>
 
     <div class="card">
@@ -241,34 +224,23 @@
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
         </div>
         <div class="chart-title">Andamento nel tempo</div><canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
-        <div class="chart-title">Distribuzione Esiti</div><canvas id="pieChart" style="max-height: 240px;"></canvas> 
+        <div class="chart-title">Distribuzione Esiti</div><canvas id="pieChart" style="max-height: 250px; padding: 10px;"></canvas> 
     </div>
 
     <div class="card">
         <div class="card-header-flex">
             <h2>📋 Archivio Dati</h2>
-            
             <div class="dropdown">
                 <button class="menu-btn" onclick="toggleMenu(event, 'archivioMenu')">⋮</button>
                 <div id="archivioMenu" class="dropdown-content">
-                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event, 'archivioMenu')">
-                        👁️ Visualizza Misurazioni
-                    </div>
-                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event, 'archivioMenu')">
-                        🔄 Sincronizza Dati
-                    </div>
-                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event, 'archivioMenu')">
-                        📄 Scarica Referto PDF
-                    </div>
-                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event, 'archivioMenu')">
-                        🗑️ Azzera Archivio
-                    </div>
+                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event, 'archivioMenu')">👁️ Visualizza Misurazioni</div>
+                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event, 'archivioMenu')">🔄 Sincronizza Dati</div>
+                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event, 'archivioMenu')">📄 Scarica Referto PDF</div>
+                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event, 'archivioMenu')">🗑️ Azzera Archivio</div>
                 </div>
             </div>
         </div>
-        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">
-            Visualizza lo storico, scarica il PDF o ricarica l'archivio.
-        </p>
+        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">Visualizza lo storico, scarica il PDF o ricarica l'archivio.</p>
         <div id="sync-status" style="font-size: 14px; font-weight: 800; color: var(--success); text-align: center; margin-top: 10px;"></div>
     </div>
 
@@ -276,14 +248,9 @@
     <div id="promemoriaModal" class="modal-overlay">
         <div class="modal-content" style="width: 90%; max-width: 400px; padding: 25px 20px;">
             <div class="modal-title">⏰ Imposta Promemoria</div>
-            
             <div class="modal-body" style="text-align: center;">
-                <p style="font-size: 14px; color: var(--text-light); margin-top: -5px; margin-bottom: 15px; font-weight: 600;">
-                    Scegli in quali giorni e orari vuoi ricevere gli avvisi per misurare la pressione.
-                </p>
-                
-                <div class="input-group" id="giorni-promemoria" style="text-align: left;">
-                    <span class="input-label">Giorni della settimana</span>
+                <p style="font-size: 14px; color: var(--text-light); margin-top: -5px; margin-bottom: 15px; font-weight: 600;">Scegli in quali giorni e orari vuoi ricevere gli avvisi per misurare la pressione.</p>
+                <div class="input-group" id="giorni-promemoria" style="text-align: left;"><span class="input-label">Giorni della settimana</span>
                     <div class="days-container">
                         <label><input type="checkbox" class="day-checkbox" value="MO" checked><span class="day-btn">Lun</span></label>
                         <label><input type="checkbox" class="day-checkbox" value="TU" checked><span class="day-btn">Mar</span></label>
@@ -294,17 +261,10 @@
                         <label><input type="checkbox" class="day-checkbox" value="SU" checked><span class="day-btn">Dom</span></label>
                     </div>
                 </div>
-
-                <div class="input-group" style="text-align: left;">
-                    <span class="input-label">Aggiungi orari giornalieri</span>
-                    <div class="grid-3">
-                        <input type="time" id="orario-1" value="08:00">
-                        <input type="time" id="orario-2" value="20:00">
-                        <input type="time" id="orario-3" placeholder="Opz.">
-                    </div>
+                <div class="input-group" style="text-align: left;"><span class="input-label">Aggiungi orari giornalieri</span>
+                    <div class="grid-3"><input type="time" id="orario-1" value="08:00"><input type="time" id="orario-2" value="20:00"><input type="time" id="orario-3" placeholder="Opz."></div>
                 </div>
             </div>
-            
             <button class="btn-secondary" onclick="impostaPromemoriaMultiplo()" style="margin-bottom: 10px;">Genera Allarmi</button>
             <button style="width: 100%; padding: 16px; background: rgba(0,0,0,0.05); color: var(--text-dark); font-weight: 800; border-radius: 16px; border: none; cursor: pointer;" onclick="chiudiModal('promemoriaModal')">Annulla</button>
         </div>
@@ -313,9 +273,7 @@
     <div id="storicoModal" class="modal-overlay">
         <div class="modal-content" style="max-height: 85vh; width: 90%; max-width: 450px; display: flex; flex-direction: column; padding: 25px 20px;">
             <div class="modal-title" style="margin-bottom: 15px;">📋 Le tue Misurazioni</div>
-            <div class="modal-body modal-scrollable" style="flex-grow: 1;">
-                <div id="lista-storico"></div>
-            </div>
+            <div class="modal-body modal-scrollable" style="flex-grow: 1;"><div id="lista-storico"></div></div>
             <button class="btn-secondary" onclick="chiudiModal('storicoModal')" style="margin-bottom: 0;">Chiudi Archivio</button>
         </div>
     </div>
@@ -339,14 +297,11 @@
     </div>
 
     <script>
-        // --- FUNZIONI MENU A TENDINA ---
         function toggleMenu(event, menuId) {
             if(event) event.stopPropagation(); 
             var dropdowns = document.getElementsByClassName("dropdown-content");
             for (var i = 0; i < dropdowns.length; i++) {
-                if (dropdowns[i].id !== menuId && dropdowns[i].classList.contains('show')) {
-                    dropdowns[i].classList.remove('show');
-                }
+                if (dropdowns[i].id !== menuId && dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show');
             }
             document.getElementById(menuId).classList.toggle("show");
         }
@@ -354,28 +309,20 @@
         window.onclick = function(event) {
             if (!event.target.matches('.menu-btn')) {
                 var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    if (dropdowns[i].classList.contains('show')) {
-                        dropdowns[i].classList.remove('show');
-                    }
-                }
+                for (var i = 0; i < dropdowns.length; i++) { if (dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show'); }
             }
         }
 
-        // --- INIZIALIZZAZIONE ---
         Chart.register(ChartDataLabels);
         let appData = []; let chartInstance = null; let pieChartInstance = null;
 
         window.onload = () => {
             const user = localStorage.getItem('gh_user');
-            if(!user) { document.getElementById('config-card').style.display = 'block'; } 
-            else { caricaStorico(); }
+            if(!user) { document.getElementById('config-card').style.display = 'block'; } else { caricaStorico(); }
         };
 
         function salvaImpostazioni() {
-            localStorage.setItem('gh_user', document.getElementById('username').value.trim());
-            localStorage.setItem('gh_repo', document.getElementById('repo').value.trim());
-            localStorage.setItem('gh_token', document.getElementById('token').value.trim());
+            localStorage.setItem('gh_user', document.getElementById('username').value.trim()); localStorage.setItem('gh_repo', document.getElementById('repo').value.trim()); localStorage.setItem('gh_token', document.getElementById('token').value.trim());
             document.getElementById('config-card').style.display = 'none'; caricaStorico();
         }
 
@@ -407,11 +354,9 @@
         }
 
         async function sincronizzaConFeedback() {
-            const syncEl = document.getElementById('sync-status');
-            syncEl.innerText = "⏳ Controllo aggiornamenti in corso...";
+            const syncEl = document.getElementById('sync-status'); syncEl.innerText = "⏳ Controllo aggiornamenti in corso...";
             await caricaStorico();
-            syncEl.innerText = "✅ Dati sincronizzati correttamente!";
-            setTimeout(() => { syncEl.innerText = ""; }, 4000);
+            syncEl.innerText = "✅ Dati sincronizzati correttamente!"; setTimeout(() => { syncEl.innerText = ""; }, 4000);
         }
 
         async function caricaStorico() {
@@ -421,9 +366,7 @@
             
             try {
                 const cacheBuster = new Date().getTime();
-                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${cacheBuster}`, {
-                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
-                });
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${cacheBuster}`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }});
                 if (!response.ok) throw new Error("Errore API");
                 const issues = await response.json();
 
@@ -431,18 +374,13 @@
 
                 issues.forEach(issue => {
                     if (issue.pull_request) return; 
-                    const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D';
-                    const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
+                    const labelName = issue.labels.length > 0 ? issue.labels[0].name : 'N/D'; const dataTitolo = issue.title.replace('Misurazione: ', '').trim();
                     const matchMax = issue.body.match(/(?:MAX|Sistolica).*?(\d+)/i); const matchMin = issue.body.match(/(?:MIN|Diastolica).*?(\d+)/i); const matchBpm = issue.body.match(/(?:BPM|Battiti).*?(\d+)/i);
                     const max = matchMax ? parseInt(matchMax[1]) : 0; const min = matchMin ? parseInt(matchMin[1]) : 0; const bpm = matchBpm ? parseInt(matchBpm[1]) : 0;
 
-                    if(max > 0 && min > 0) {
-                        appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) });
-                        sumMax += max; sumMin += min; count++;
-                    }
+                    if(max > 0 && min > 0) { appData.push({ number: issue.number, data: dataTitolo, max, min, bpm, label: labelName, rawDate: new Date(issue.created_at) }); sumMax += max; sumMin += min; count++; }
 
-                    let classSis = max >= 135 ? 'text-alta' : (max <= 90 ? 'text-bassa' : 'text-normale');
-                    let classDia = min >= 85 ? 'text-alta' : (min <= 60 ? 'text-bassa' : 'text-normale');
+                    let classSis = max >= 135 ? 'text-alta' : (max <= 90 ? 'text-bassa' : 'text-normale'); let classDia = min >= 85 ? 'text-alta' : (min <= 60 ? 'text-bassa' : 'text-normale');
                     let colorTheme = labelName.includes('Alta') ? '#FF2A5F' : (labelName.includes('Bassa') ? '#FF9500' : '#34C759');
                     let riClass = labelName.includes('Alta') ? 'ri-alta' : (labelName.includes('Bassa') ? 'ri-bassa' : 'ri-normale');
                     
@@ -460,69 +398,44 @@
                 if (appData.length === 0) {
                     listaEl.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-light); font-weight:800;">Nessun dato in archivio.</div>';
                     document.getElementById('avg-max').innerText = '-'; document.getElementById('avg-min').innerText = '-';
-                    if(chartInstance) chartInstance.destroy(); if(pieChartInstance) pieChartInstance.destroy();
-                    return;
+                    if(chartInstance) chartInstance.destroy(); if(pieChartInstance) pieChartInstance.destroy(); return;
                 }
 
-                listaEl.innerHTML = htmlContent; 
-                document.getElementById('avg-max').innerText = Math.round(sumMax / count); 
-                document.getElementById('avg-min').innerText = Math.round(sumMin / count);
-                
+                listaEl.innerHTML = htmlContent; document.getElementById('avg-max').innerText = Math.round(sumMax / count); document.getElementById('avg-min').innerText = Math.round(sumMin / count);
                 appData.sort((a, b) => a.rawDate - b.rawDate); disegnaGrafico();
 
-            } catch (error) { 
-                document.getElementById('sync-status').innerText = '❌ Errore nel caricamento dei dati.'; 
-                document.getElementById('sync-status').style.color = '#FF3B30';
-            }
+            } catch (error) { document.getElementById('sync-status').innerText = '❌ Errore nel caricamento dei dati.'; document.getElementById('sync-status').style.color = '#FF3B30'; }
         }
 
-        // --- ALTRE FUNZIONI ---
         function impostaPromemoriaMultiplo() {
-            const daysDiv = document.getElementById('giorni-promemoria');
-            const checkboxes = daysDiv.querySelectorAll('input.day-checkbox:checked');
+            const daysDiv = document.getElementById('giorni-promemoria'); const checkboxes = daysDiv.querySelectorAll('input.day-checkbox:checked');
             let selectedDays = Array.from(checkboxes).map(cb => cb.value);
-
             if (selectedDays.length === 0) { alert("⚠️ Seleziona almeno un giorno della settimana!"); return; }
 
-            const orari = [];
-            ['orario-1', 'orario-2', 'orario-3'].forEach(id => { let val = document.getElementById(id).value; if(val) orari.push(val); });
+            const orari = []; ['orario-1', 'orario-2', 'orario-3'].forEach(id => { let val = document.getElementById(id).value; if(val) orari.push(val); });
             if (orari.length === 0) { alert("⚠️ Inserisci almeno un orario!"); return; }
 
-            const now = new Date();
-            const formatICS = (date) => { const pad = (n) => n < 10 ? '0' + n : n; return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`; };
+            const now = new Date(); const formatICS = (date) => { const pad = (n) => n < 10 ? '0' + n : n; return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`; };
             let icsString = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Heart Monitor Ultra//IT\nCALSCALE:GREGORIAN\n`;
 
             orari.forEach((timeVal, index) => {
-                const [ore, minuti] = timeVal.split(':');
-                let startData = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ore, minuti, 0);
-                if (startData < now) startData.setDate(startData.getDate() + 1); 
-                let endData = new Date(startData.getTime() + 10 * 60000); 
-
+                const [ore, minuti] = timeVal.split(':'); let startData = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ore, minuti, 0);
+                if (startData < now) startData.setDate(startData.getDate() + 1); let endData = new Date(startData.getTime() + 10 * 60000); 
                 let rrule = `FREQ=WEEKLY;BYDAY=${selectedDays.join(',')}`;
                 icsString += `BEGIN:VEVENT\nUID:${now.getTime()}_${index}@heartmonitor.local\nDTSTAMP:${formatICS(now)}\nDTSTART;TZID=Europe/Rome:${formatICS(startData)}\nDTEND;TZID=Europe/Rome:${formatICS(endData)}\nRRULE:${rrule}\nSUMMARY:❤️ Misura la Pressione\nDESCRIPTION:È il momento di aprire l'app Heart Monitor Ultra e misurare la pressione!\nBEGIN:VALARM\nTRIGGER:-PT0M\nACTION:DISPLAY\nDESCRIPTION:Promemoria Pressione\nEND:VALARM\nEND:VEVENT\n`;
             });
-
-            icsString += `END:VCALENDAR`;
-            const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' });
-            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'promemoria_pressione_multiplo.ics';
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            
-            chiudiModal('promemoriaModal');
-            alert(`✅ Generati ${orari.length} promemoria!\n\nClicca "Aggiungi" o "Ok" nel tuo telefono per salvarli automaticamente sul calendario nei giorni scelti.`);
+            icsString += `END:VCALENDAR`; const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'promemoria_pressione_multiplo.ics';
+            document.body.appendChild(link); link.click(); document.body.removeChild(link); chiudiModal('promemoriaModal'); alert(`✅ Generati ${orari.length} promemoria!\n\nClicca "Aggiungi" o "Ok" nel tuo telefono per salvarli automaticamente sul calendario nei giorni scelti.`);
         }
 
-        // Modals & Charts
         function apriModal(id) { const modal = document.getElementById(id); modal.style.display = 'flex'; setTimeout(() => modal.classList.add('active'), 10); }
         function chiudiModal(id) { const modal = document.getElementById(id); modal.classList.remove('active'); setTimeout(() => modal.style.display = 'none', 300); }
-        
         function apriDettagli(max, min, bpm, label) {
-            let body = document.getElementById('infoModalBody');
-            let html = `<div style="text-align:center; margin-bottom: 15px; font-size: 20px;"><b>${max}</b> / <b>${min}</b> ${bpm ? `(❤️ ${bpm} bpm)` : ''}</div>`;
+            let body = document.getElementById('infoModalBody'); let html = `<div style="text-align:center; margin-bottom: 15px; font-size: 20px;"><b>${max}</b> / <b>${min}</b> ${bpm ? `(❤️ ${bpm} bpm)` : ''}</div>`;
             if (max >= 135) html += `🔴 <b>Sistolica Alta:</b> Il valore ${max} indica che la pressione nelle arterie durante il battito cardiaco è superiore alla soglia ottimale.<br><br>`; else if (max <= 90) html += `🟡 <b>Sistolica Bassa:</b> Il valore ${max} è inferiore alla norma.<br><br>`; else html += `🟢 <b>Sistolica Normale:</b> Il valore ${max} rientra nei parametri ottimali.<br><br>`;
             if (min >= 85) html += `🔴 <b>Diastolica Alta:</b> Il valore ${min} indica una resistenza arteriosa elevata quando il cuore è a riposo.<br>`; else if (min <= 60) html += `🟡 <b>Diastolica Bassa:</b> Il valore ${min} è considerato basso.<br>`; else html += `🟢 <b>Diastolica Normale:</b> Il valore ${min} è perfetto.<br>`;
             body.innerHTML = html; apriModal('infoModal');
         }
-        
         function apriModalPDF() { if(appData.length === 0) { alert("Nessun dato da esportare!"); return; } document.getElementById('pdfNome').value = ""; apriModal('pdfModal'); }
         function confermaPDF() { const nome = document.getElementById('pdfNome').value.trim(); if(!nome) { alert("Per favore, inserisci un nome per il referto."); return; } chiudiModal('pdfModal'); scaricaPDF(nome); }
 
@@ -535,7 +448,44 @@
             chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Sistolica (MAX)', data: dataMax, borderColor: '#FF2A5F', backgroundColor: 'rgba(255, 42, 95, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#FF2A5F', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'}, { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#007AFF', backgroundColor: 'rgba(0, 122, 255, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#007AFF', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'} ] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, datalabels: { display: false } }, scales: { y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }, x: { grid: { display: false, drawBorder: false } } } } });
             
             let countAlta = 0, countNormale = 0, countBassa = 0; appData.forEach(d => { if(d.label.includes('Alta')) countAlta++; else if(d.label.includes('Bassa')) countBassa++; else countNormale++; });
-            pieChartInstance = new Chart(ctxPie, { type: 'doughnut', data: { labels: ['Alta', 'Normale', 'Bassa'], datasets: [{ data: [countAlta, countNormale, countBassa], backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'], borderWidth: 0, hoverOffset: 8 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, datalabels: { color: '#ffffff', font: { weight: '900', size: 16 }, formatter: (value, context) => { if (value === 0) return null; let sum = 0; let dataArr = context.chart.data.datasets[0].data; dataArr.map(data => { sum += data; }); return Math.round((value * 100) / sum) + "%"; } } } } });
+            
+            // GRAFICO A TORTA CON ANIMAZIONI E BORDI ARROTONDATI (STILE MODERNO)
+            pieChartInstance = new Chart(ctxPie, { 
+                type: 'doughnut', 
+                data: { 
+                    labels: ['Alta', 'Normale', 'Bassa'], 
+                    datasets: [{ 
+                        data: [countAlta, countNormale, countBassa], 
+                        backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'], 
+                        borderWidth: 5, // Aumentato lo spazio tra gli spicchi
+                        borderColor: '#ffffff', // Colore bianco per farli sembrare staccati
+                        borderRadius: 12, // Arrotondamento per un look modernissimo
+                        hoverOffset: 12 // L'effetto pop-out quando ci clicchi sopra
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    cutout: '75%', // Anello più sottile ed elegante
+                    animation: {
+                        animateScale: true, // Cresce dal centro quando carichi l'app
+                        animateRotate: true, // Ruota in ingresso
+                        duration: 1500, // Durata dell'animazione
+                        easing: 'easeOutBounce' // Un piccolo rimbalzo finale molto carino
+                    },
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, 
+                        datalabels: { 
+                            color: '#ffffff', font: { weight: '900', size: 16 }, 
+                            formatter: (value, context) => { 
+                                if (value === 0) return null; let sum = 0; 
+                                let dataArr = context.chart.data.datasets[0].data; dataArr.map(data => { sum += data; }); 
+                                return Math.round((value * 100) / sum) + "%"; 
+                            } 
+                        } 
+                    } 
+                } 
+            });
         }
 
         async function azzeraArchivio() {
