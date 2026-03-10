@@ -46,7 +46,7 @@
         @keyframes heartbeat { 0% { transform: scale(0.95); } 15% { transform: scale(1.15); } 30% { transform: scale(0.95); } 45% { transform: scale(1.15); } 100% { transform: scale(0.95); } }
         @keyframes pulse-ring { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* ANIMAZIONE ECG (MONITOR BATTITO) */
+        /* ANIMAZIONE ECG */
         .ekg-monitor {
             width: 100%; height: 30px; margin-top: 5px; position: relative; overflow: hidden;
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
@@ -148,9 +148,12 @@
         .stats-box div { font-size: 38px; font-weight: 900; color: var(--text-dark); margin-top: 5px; line-height: 1;}
         .stats-box span { font-size: 12px; color: var(--text-light); text-transform: uppercase; font-weight: 900; letter-spacing: 1.5px;}
         
-        /* EFFETTO GLOW/3D PER IL GRAFICO A TORTA */
+        /* EFFETTO 3D E OMBRE GRAFICI */
         canvas { max-width: 100%; margin-top: 15px; background: transparent; }
-        #pieChart { filter: drop-shadow(0px 12px 20px rgba(0,0,0,0.15)); }
+        #pieChart { 
+            filter: drop-shadow(0px 20px 25px rgba(0,0,0,0.2)) drop-shadow(0px 8px 10px rgba(0,0,0,0.1));
+            transition: filter 0.3s ease;
+        }
         
         .chart-title { text-align: center; font-size: 13px; color: var(--text-light); margin-top: 35px; margin-bottom: 5px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;}
 
@@ -224,7 +227,9 @@
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
         </div>
         <div class="chart-title">Andamento nel tempo</div><canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
-        <div class="chart-title">Distribuzione Esiti</div><canvas id="pieChart" style="max-height: 250px; padding: 10px;"></canvas> 
+        <div class="chart-title">Distribuzione Esiti</div>
+        
+        <canvas id="pieChart" style="max-height: 280px; padding: 15px 10px;"></canvas> 
     </div>
 
     <div class="card">
@@ -449,34 +454,41 @@
             
             let countAlta = 0, countNormale = 0, countBassa = 0; appData.forEach(d => { if(d.label.includes('Alta')) countAlta++; else if(d.label.includes('Bassa')) countBassa++; else countNormale++; });
             
-            // GRAFICO A TORTA CON ANIMAZIONI E BORDI ARROTONDATI (STILE MODERNO)
+            // GRAFICO A TORTA WOW (PIENO, 3D E CON PERCENTUALI)
             pieChartInstance = new Chart(ctxPie, { 
-                type: 'doughnut', 
+                type: 'pie', // Torta piena (non più doughnut)
                 data: { 
                     labels: ['Alta', 'Normale', 'Bassa'], 
                     datasets: [{ 
                         data: [countAlta, countNormale, countBassa], 
                         backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'], 
-                        borderWidth: 5, // Aumentato lo spazio tra gli spicchi
-                        borderColor: '#ffffff', // Colore bianco per farli sembrare staccati
-                        borderRadius: 12, // Arrotondamento per un look modernissimo
-                        hoverOffset: 12 // L'effetto pop-out quando ci clicchi sopra
+                        borderWidth: 4, 
+                        borderColor: '#ffffff', // Bordo bianco per separare gli spicchi
+                        hoverOffset: 20 // Gli spicchi "saltano fuori" molto di più quando ci passi sopra
                     }] 
                 }, 
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    cutout: '75%', // Anello più sottile ed elegante
+                    layout: {
+                        padding: { top: 10, bottom: 10 } // Spazio per l'ombra e l'animazione
+                    },
                     animation: {
-                        animateScale: true, // Cresce dal centro quando carichi l'app
-                        animateRotate: true, // Ruota in ingresso
-                        duration: 1500, // Durata dell'animazione
-                        easing: 'easeOutBounce' // Un piccolo rimbalzo finale molto carino
+                        animateScale: true, 
+                        animateRotate: true, 
+                        duration: 1800, 
+                        easing: 'easeOutQuart'
                     },
                     plugins: { 
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }, 
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { usePointStyle: true, padding: 25, font: { size: 14 } } 
+                        }, 
                         datalabels: { 
-                            color: '#ffffff', font: { weight: '900', size: 16 }, 
+                            color: '#ffffff', 
+                            font: { weight: '900', size: 18 }, // Percentuali grandi e spesse
+                            textShadowColor: 'rgba(0,0,0,0.3)', // Piccola ombra sul testo per leggibilità
+                            textShadowBlur: 4,
                             formatter: (value, context) => { 
                                 if (value === 0) return null; let sum = 0; 
                                 let dataArr = context.chart.data.datasets[0].data; dataArr.map(data => { sum += data; }); 
