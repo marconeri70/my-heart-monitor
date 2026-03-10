@@ -90,7 +90,7 @@
         h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
         #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
         
-        /* HEADER ARCHIVIO E MENU A TENDINA */
+        /* HEADER CON MENU A TENDINA */
         .card-header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 0; margin-bottom: 8px;}
         .card-header-flex h2 { border-bottom: none; padding-bottom: 0; margin: 0; }
         
@@ -119,7 +119,7 @@
         .dropdown-item.text-danger { color: #FF3B30; border-top: 1px solid rgba(0,0,0,0.05); }
         .dropdown-item.text-danger:hover { background: rgba(255,59,48,0.08); color: #FF3B30;}
 
-        /* ARCHIVIO E BADGE (ORA DENTRO IL MODAL) */
+        /* ARCHIVIO E BADGE */
         .report-item { padding: 18px; margin-bottom: 16px; background: #fdfdfd; border-radius: 16px; font-size: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: 0.3s; cursor: pointer; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,0.03);}
         .report-item:hover { transform: scale(1.02); box-shadow: 0 8px 16px rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.05);}
         .report-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 6px 0 0 6px; }
@@ -145,14 +145,13 @@
         .modal-body { font-size: 16px; color: var(--text-dark); line-height: 1.6; text-align: left;}
         .modal-body b { color: var(--primary); }
 
-        /* Scrollbar personalizzata per lo storico */
         .modal-scrollable { overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
         .modal-scrollable::-webkit-scrollbar { width: 6px; }
         .modal-scrollable::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .modal-scrollable::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
         
-        /* Ordine di visualizzazione Popup (z-index) */
         #storicoModal { z-index: 1000; }
+        #promemoriaModal { z-index: 1005; }
         #infoModal, #pdfModal { z-index: 1010; }
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -179,52 +178,30 @@
     <div class="card">
         <h2>📝 Nuova Misurazione</h2>
         <div class="grid-2">
-            <div class="input-group">
-                <span class="input-label">Sistolica (MAX)</span>
-                <input type="number" id="sis" placeholder="es. 120">
-            </div>
-            <div class="input-group">
-                <span class="input-label">Diastolica (MIN)</span>
-                <input type="number" id="dia" placeholder="es. 80">
-            </div>
+            <div class="input-group"><span class="input-label">Sistolica (MAX)</span><input type="number" id="sis" placeholder="es. 120"></div>
+            <div class="input-group"><span class="input-label">Diastolica (MIN)</span><input type="number" id="dia" placeholder="es. 80"></div>
         </div>
-        <div class="input-group">
-            <span class="input-label">Battiti al minuto (BPM)</span>
-            <input type="number" id="bpm" placeholder="es. 70">
-        </div>
+        <div class="input-group"><span class="input-label">Battiti al minuto (BPM)</span><input type="number" id="bpm" placeholder="es. 70"></div>
         <button onclick="inviaDati()">Salva Dati</button>
         <div id="status"></div>
     </div>
 
     <div class="card">
-        <h2>⏰ Imposta Promemoria</h2>
-        <p style="font-size: 14px; color: var(--text-light); margin-top: -5px; margin-bottom: 15px; font-weight: 600;">
-            Scegli in quali giorni e orari vuoi ricevere gli avvisi per misurare la pressione.
+        <div class="card-header-flex">
+            <h2>⏰ Promemoria</h2>
+            
+            <div class="dropdown">
+                <button class="menu-btn" onclick="toggleMenu(event, 'promemoriaMenu')">⋮</button>
+                <div id="promemoriaMenu" class="dropdown-content">
+                    <div class="dropdown-item" onclick="apriModal('promemoriaModal'); toggleMenu(event, 'promemoriaMenu')">
+                        ⚙️ Configura Allarmi
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">
+            Programma la sveglia del telefono per ricordarti di effettuare le misurazioni.
         </p>
-        
-        <div class="input-group" id="giorni-promemoria">
-            <span class="input-label">Giorni della settimana</span>
-            <div class="days-container">
-                <label><input type="checkbox" class="day-checkbox" value="MO" checked><span class="day-btn">Lun</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="TU" checked><span class="day-btn">Mar</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="WE" checked><span class="day-btn">Mer</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="TH" checked><span class="day-btn">Gio</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="FR" checked><span class="day-btn">Ven</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="SA" checked><span class="day-btn">Sab</span></label>
-                <label><input type="checkbox" class="day-checkbox" value="SU" checked><span class="day-btn">Dom</span></label>
-            </div>
-        </div>
-
-        <div class="input-group">
-            <span class="input-label">Aggiungi orari giornalieri</span>
-            <div class="grid-3">
-                <input type="time" id="orario-1" value="08:00">
-                <input type="time" id="orario-2" value="20:00">
-                <input type="time" id="orario-3" placeholder="Opz.">
-            </div>
-        </div>
-        
-        <button class="btn-secondary" onclick="impostaPromemoriaMultiplo()">Genera Allarmi</button>
     </div>
 
     <div class="card">
@@ -233,10 +210,8 @@
             <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
             <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
         </div>
-        <div class="chart-title">Andamento nel tempo</div>
-        <canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
-        <div class="chart-title">Distribuzione Esiti</div>
-        <canvas id="pieChart" style="max-height: 240px;"></canvas> 
+        <div class="chart-title">Andamento nel tempo</div><canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
+        <div class="chart-title">Distribuzione Esiti</div><canvas id="pieChart" style="max-height: 240px;"></canvas> 
     </div>
 
     <div class="card">
@@ -244,39 +219,73 @@
             <h2>📋 Archivio Dati</h2>
             
             <div class="dropdown">
-                <button class="menu-btn" onclick="toggleMenu(event)">⋮</button>
+                <button class="menu-btn" onclick="toggleMenu(event, 'archivioMenu')">⋮</button>
                 <div id="archivioMenu" class="dropdown-content">
-                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event)">
+                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event, 'archivioMenu')">
                         👁️ Visualizza Misurazioni
                     </div>
-                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event)">
+                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event, 'archivioMenu')">
                         🔄 Sincronizza Dati
                     </div>
-                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event)">
+                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event, 'archivioMenu')">
                         📄 Scarica Referto PDF
                     </div>
-                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event)">
+                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event, 'archivioMenu')">
                         🗑️ Azzera Archivio
                     </div>
                 </div>
             </div>
         </div>
-        
         <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">
-            Usa il menu a tendina qui a destra per visualizzare la lista dei tuoi dati, scaricare il PDF per il medico o ricaricare l'archivio.
+            Visualizza lo storico, scarica il PDF o ricarica l'archivio.
         </p>
         <div id="sync-status" style="font-size: 14px; font-weight: 800; color: var(--success); text-align: center; margin-top: 10px;"></div>
     </div>
 
 
+    <div id="promemoriaModal" class="modal-overlay">
+        <div class="modal-content" style="width: 90%; max-width: 400px; padding: 25px 20px;">
+            <div class="modal-title">⏰ Imposta Promemoria</div>
+            
+            <div class="modal-body" style="text-align: center;">
+                <p style="font-size: 14px; color: var(--text-light); margin-top: -5px; margin-bottom: 15px; font-weight: 600;">
+                    Scegli in quali giorni e orari vuoi ricevere gli avvisi per misurare la pressione.
+                </p>
+                
+                <div class="input-group" id="giorni-promemoria" style="text-align: left;">
+                    <span class="input-label">Giorni della settimana</span>
+                    <div class="days-container">
+                        <label><input type="checkbox" class="day-checkbox" value="MO" checked><span class="day-btn">Lun</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="TU" checked><span class="day-btn">Mar</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="WE" checked><span class="day-btn">Mer</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="TH" checked><span class="day-btn">Gio</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="FR" checked><span class="day-btn">Ven</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="SA" checked><span class="day-btn">Sab</span></label>
+                        <label><input type="checkbox" class="day-checkbox" value="SU" checked><span class="day-btn">Dom</span></label>
+                    </div>
+                </div>
+
+                <div class="input-group" style="text-align: left;">
+                    <span class="input-label">Aggiungi orari giornalieri</span>
+                    <div class="grid-3">
+                        <input type="time" id="orario-1" value="08:00">
+                        <input type="time" id="orario-2" value="20:00">
+                        <input type="time" id="orario-3" placeholder="Opz.">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn-secondary" onclick="impostaPromemoriaMultiplo()" style="margin-bottom: 10px;">Genera Allarmi</button>
+            <button style="width: 100%; padding: 16px; background: rgba(0,0,0,0.05); color: var(--text-dark); font-weight: 800; border-radius: 16px; border: none; cursor: pointer;" onclick="chiudiModal('promemoriaModal')">Annulla</button>
+        </div>
+    </div>
+
     <div id="storicoModal" class="modal-overlay">
         <div class="modal-content" style="max-height: 85vh; width: 90%; max-width: 450px; display: flex; flex-direction: column; padding: 25px 20px;">
             <div class="modal-title" style="margin-bottom: 15px;">📋 Le tue Misurazioni</div>
-            
             <div class="modal-body modal-scrollable" style="flex-grow: 1;">
                 <div id="lista-storico"></div>
             </div>
-            
             <button class="btn-secondary" onclick="chiudiModal('storicoModal')" style="margin-bottom: 0;">Chiudi Archivio</button>
         </div>
     </div>
@@ -295,15 +304,25 @@
             <div class="modal-body" style="text-align: center; margin-bottom: 15px;">Inserisci il nome del paziente.</div>
             <input type="text" id="pdfNome" placeholder="es. Mario Rossi" style="margin-bottom: 20px;">
             <button class="btn-secondary" onclick="confermaPDF()">Scarica Ora</button>
-            <button style="background: rgba(0,0,0,0.05); color: var(--text-dark); box-shadow: none;" onclick="chiudiModal('pdfModal')">Annulla</button>
+            <button style="width: 100%; padding: 16px; background: rgba(0,0,0,0.05); color: var(--text-dark); font-weight: 800; border-radius: 16px; border: none; cursor: pointer; margin-top: 10px;" onclick="chiudiModal('pdfModal')">Annulla</button>
         </div>
     </div>
 
     <script>
-        // --- FUNZIONI MENU A TENDINA ---
-        function toggleMenu(event) {
+        // --- FUNZIONI MENU A TENDINA (Modificato per supportare menu multipli) ---
+        function toggleMenu(event, menuId) {
             if(event) event.stopPropagation(); 
-            document.getElementById("archivioMenu").classList.toggle("show");
+            
+            // Chiude tutti gli altri menu aperti
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].id !== menuId && dropdowns[i].classList.contains('show')) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+            
+            // Apre/chiude il menu richiesto
+            document.getElementById(menuId).classList.toggle("show");
         }
 
         window.onclick = function(event) {
@@ -374,7 +393,6 @@
             const listaEl = document.getElementById('lista-storico');
             if (!user || !repo || !token) return;
             
-            // Non sovrascriviamo la Home, aggiorniamo solo in background!
             try {
                 const cacheBuster = new Date().getTime();
                 const response = await fetch(`https://api.github.com/repos/${user}/${repo}/issues?state=open&per_page=100&t=${cacheBuster}`, {
@@ -463,6 +481,8 @@
             const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'promemoria_pressione_multiplo.ics';
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
             
+            // Chiude la finestra a comparsa del promemoria dopo aver cliccato genera
+            chiudiModal('promemoriaModal');
             alert(`✅ Generati ${orari.length} promemoria!\n\nClicca "Aggiungi" o "Ok" nel tuo telefono per salvarli automaticamente sul calendario nei giorni scelti.`);
         }
 
