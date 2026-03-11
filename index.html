@@ -46,19 +46,43 @@
         @keyframes heartbeat { 0% { transform: scale(0.95); } 15% { transform: scale(1.15); } 30% { transform: scale(0.95); } 45% { transform: scale(1.15); } 100% { transform: scale(0.95); } }
         @keyframes pulse-ring { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* ANIMAZIONE ECG */
+        /* NUOVA ANIMAZIONE ECG (MONITOR BATTITO REALISTICO 3D) */
         .ekg-monitor {
             width: 100%; height: 30px; margin-top: 5px; position: relative; overflow: hidden;
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
-            mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%); opacity: 0.9;
+            /* Sfuma i bordi del contenitore in modo che la linea compaia e sparisca dolcemente */
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); 
+            opacity: 0.9;
         }
+        
+        /* Base e animazione comune per linea e bagliore */
+        .ekg-line, .ekg-line-glow {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-repeat: no-repeat; background-size: 100% 100%;
+            -webkit-mask-size: 200% 100%; mask-size: 200% 100%;
+            animation: ekgSweep 2.5s infinite linear;
+        }
+        
+        /* La scia rossa che svanisce come in un vero monitor */
         .ekg-line {
-            width: 200%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='30' viewBox='0 0 250 30'%3E%3Cpath d='M0,15 L50,15 L55,10 L60,20 L70,2 L80,28 L85,15 L110,15 L115,10 L125,15 L250,15' fill='none' stroke='%23FF2A5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-            background-repeat: repeat-x; background-position: left center;
-            animation: ekgScroll 1.8s linear infinite; filter: drop-shadow(0px 0px 4px rgba(255, 42, 95, 0.7));
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='30' viewBox='0 0 400 30' preserveAspectRatio='none'%3E%3Cpath d='M0,15 L145,15 L150,12 L155,15 L165,15 L170,20 L175,2 L185,28 L190,15 L210,15 L215,10 L225,15 L400,15' fill='none' stroke='%23FF2A5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.1) 25%, rgba(0,0,0,0.6) 48%, black 50%, transparent 51%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.1) 25%, rgba(0,0,0,0.6) 48%, black 50%, transparent 51%, transparent 100%);
+            filter: drop-shadow(0px 0px 3px rgba(255, 42, 95, 0.6));
         }
-        @keyframes ekgScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-250px); } }
+
+        /* La punta laser bianca e brillante che guida il tracciato */
+        .ekg-line-glow {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='30' viewBox='0 0 400 30' preserveAspectRatio='none'%3E%3Cpath d='M0,15 L145,15 L150,12 L155,15 L165,15 L170,20 L175,2 L185,28 L190,15 L210,15 L215,10 L225,15 L400,15' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 49%, black 50%, transparent 51%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, transparent 49%, black 50%, transparent 51%, transparent 100%);
+            filter: drop-shadow(0px 0px 6px rgba(255, 255, 255, 1)) drop-shadow(0px 0px 10px rgba(255, 42, 95, 1));
+        }
+        
+        @keyframes ekgSweep { 
+            0% { -webkit-mask-position: 100% 0; mask-position: 100% 0; } 
+            100% { -webkit-mask-position: 0% 0; mask-position: 0% 0; } 
+        }
 
         .card { 
             background: var(--card-bg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -104,7 +128,6 @@
         h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
         #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
         
-        /* HEADER CON MENU A TENDINA */
         .card-header-flex { display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 0; margin-bottom: 8px;}
         .card-header-flex h2 { border-bottom: none; padding-bottom: 0; margin: 0; }
         
@@ -185,7 +208,10 @@
             <div class="heart-container"><div class="heart-pulse"></div><div class="heart-icon">❤️</div></div>
             Heart Monitor
         </h1>
-        <div class="ekg-monitor"><div class="ekg-line"></div></div>
+        <div class="ekg-monitor">
+            <div class="ekg-line"></div>
+            <div class="ekg-line-glow"></div>
+        </div>
     </div>
 
     <div class="card" id="config-card" style="display:none;">
@@ -228,7 +254,6 @@
         </div>
         <div class="chart-title">Andamento nel tempo</div><canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
         <div class="chart-title">Distribuzione Esiti</div>
-        
         <canvas id="pieChart" style="max-height: 280px; padding: 15px 10px;"></canvas> 
     </div>
 
@@ -454,41 +479,27 @@
             
             let countAlta = 0, countNormale = 0, countBassa = 0; appData.forEach(d => { if(d.label.includes('Alta')) countAlta++; else if(d.label.includes('Bassa')) countBassa++; else countNormale++; });
             
-            // GRAFICO A TORTA WOW (PIENO, 3D E CON PERCENTUALI)
             pieChartInstance = new Chart(ctxPie, { 
-                type: 'pie', // Torta piena (non più doughnut)
+                type: 'pie', 
                 data: { 
                     labels: ['Alta', 'Normale', 'Bassa'], 
                     datasets: [{ 
                         data: [countAlta, countNormale, countBassa], 
                         backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'], 
                         borderWidth: 4, 
-                        borderColor: '#ffffff', // Bordo bianco per separare gli spicchi
-                        hoverOffset: 20 // Gli spicchi "saltano fuori" molto di più quando ci passi sopra
+                        borderColor: '#ffffff', 
+                        hoverOffset: 20 
                     }] 
                 }, 
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    layout: {
-                        padding: { top: 10, bottom: 10 } // Spazio per l'ombra e l'animazione
-                    },
-                    animation: {
-                        animateScale: true, 
-                        animateRotate: true, 
-                        duration: 1800, 
-                        easing: 'easeOutQuart'
-                    },
+                    layout: { padding: { top: 10, bottom: 10 } },
+                    animation: { animateScale: true, animateRotate: true, duration: 1800, easing: 'easeOutQuart' },
                     plugins: { 
-                        legend: { 
-                            position: 'bottom', 
-                            labels: { usePointStyle: true, padding: 25, font: { size: 14 } } 
-                        }, 
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25, font: { size: 14 } } }, 
                         datalabels: { 
-                            color: '#ffffff', 
-                            font: { weight: '900', size: 18 }, // Percentuali grandi e spesse
-                            textShadowColor: 'rgba(0,0,0,0.3)', // Piccola ombra sul testo per leggibilità
-                            textShadowBlur: 4,
+                            color: '#ffffff', font: { weight: '900', size: 18 }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 4,
                             formatter: (value, context) => { 
                                 if (value === 0) return null; let sum = 0; 
                                 let dataArr = context.chart.data.datasets[0].data; dataArr.map(data => { sum += data; }); 
