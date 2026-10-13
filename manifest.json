@@ -1,12 +1,13 @@
 {
   "name": "Heart Monitor Ultra",
   "short_name": "HeartApp",
-  "description": "App per il monitoraggio della pressione",
-  "start_url": "/my-heart-monitor/index.html",
+  "description": "Monitor pressione e integrazione Bluetooth COLMI R09",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#e63946",
+  "background_color": "#F2F2F7",
+  "theme_color": "#FF2A5F",
   "icons": [
     {
       "src": "icona.png",

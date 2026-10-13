@@ -125,6 +125,24 @@
         .btn-secondary { background: linear-gradient(135deg, #4A90E2, #007AFF); box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3); }
         .btn-secondary:hover { box-shadow: 0 15px 25px rgba(0, 122, 255, 0.4); }
 
+
+        /* COLMI R09 */
+        .ring-badge { padding: 7px 11px; border-radius: 999px; background: rgba(142,142,147,.12); color: var(--text-light); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .7px; white-space: nowrap; }
+        .ring-badge.connected { background: rgba(52,199,89,.12); color: var(--success); }
+        .ring-metrics { display: grid; grid-template-columns: 1.3fr .8fr .9fr; gap: 8px; margin: 16px 0; }
+        .ring-metric { background: rgba(255,255,255,.75); border: 1px solid rgba(0,0,0,.04); border-radius: 16px; padding: 12px 8px; text-align: center; min-width: 0; }
+        .ring-metric span { display: block; color: var(--text-light); font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+        .ring-metric strong { display: block; font-size: 16px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ring-status { min-height: 20px; padding: 10px 12px; margin: 10px 0 4px; border-radius: 12px; font-size: 13px; line-height: 1.35; font-weight: 800; background: rgba(0,122,255,.07); color: var(--secondary); }
+        .ring-status.success { background: rgba(52,199,89,.09); color: #248A3D; }
+        .ring-status.warning { background: rgba(255,149,0,.10); color: #B86E00; }
+        .ring-status.error { background: rgba(255,59,48,.09); color: #D70015; }
+        .ring-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .ring-actions button { margin: 8px 0; padding: 15px 10px; font-size: 13px; letter-spacing: .4px; }
+        .ring-actions button:disabled { opacity: .45; transform: none; cursor: not-allowed; box-shadow: none; }
+        .ring-disconnect { background: rgba(255,59,48,.08); color: #D70015; box-shadow: none; margin-top: 4px; }
+        .ring-disconnect:hover { background: rgba(255,59,48,.13); box-shadow: none; }
+        .ring-note { color: var(--text-light); font-size: 12px; line-height: 1.45; font-weight: 700; margin: 10px 2px 0; }
         h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
         #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
         
@@ -220,6 +238,29 @@
         <div class="input-group"><input type="text" id="repo" placeholder="Repo (es. my-heart-monitor)"></div>
         <div class="input-group"><input type="password" id="token" placeholder="Token GitHub"></div>
         <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni</button>
+    </div>
+
+
+    <div class="card" id="ring-card">
+        <div class="card-header-flex">
+            <h2>💍 COLMI Smart Ring</h2>
+            <span id="ringConnectionBadge" class="ring-badge">Non connesso</span>
+        </div>
+        <p style="font-size: 14px; color: var(--text-light); margin: 10px 0 0; font-weight: 700;">Collegamento Bluetooth diretto al tuo R09. Il battito rilevato viene copiato automaticamente nel campo BPM della misurazione.</p>
+        <div class="ring-metrics">
+            <div class="ring-metric"><span>Dispositivo</span><strong id="ringName">R09_D502</strong></div>
+            <div class="ring-metric"><span>Batteria</span><strong id="ringBattery">--</strong></div>
+            <div class="ring-metric"><span>Battito</span><strong id="ringBpm">--</strong></div>
+        </div>
+        <div style="font-size:11px; color:var(--text-light); text-align:right; font-weight:700; margin-top:-8px;">Ultimo dato: <span id="ringLastUpdate">--</span></div>
+        <div id="ringStatus" class="ring-status">Pronto.</div>
+        <button id="ringConnectBtn" class="btn-secondary" onclick="ringConnect()">🔎 Cerca e collega anello</button>
+        <div class="ring-actions">
+            <button id="ringBatteryBtn" class="btn-secondary" onclick="ringReadBattery()" disabled>🔋 Batteria</button>
+            <button id="ringHrBtn" onclick="ringToggleHeartRate()" disabled>❤️ Avvia battito</button>
+        </div>
+        <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
+        <p class="ring-note">Per il test chiudi QRing prima di collegarti. Web Bluetooth richiede Android Chrome/Chromium e una pagina HTTPS. I valori dell’anello non sostituiscono misurazioni mediche.</p>
     </div>
 
     <div class="card">
@@ -325,6 +366,8 @@
             <button style="width: 100%; padding: 16px; background: rgba(0,0,0,0.05); color: var(--text-dark); font-weight: 800; border-radius: 16px; border: none; cursor: pointer; margin-top: 10px;" onclick="chiudiModal('pdfModal')">Annulla</button>
         </div>
     </div>
+
+    <script src="ring.js"></script>
 
     <script>
         function toggleMenu(event, menuId) {
