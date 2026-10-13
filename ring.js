@@ -1,5 +1,5 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v6)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v7)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
@@ -72,6 +72,9 @@
     let gestureConfidenceThreshold = 65;
     let gestureAutoStart = false;
     let gestureVibrate = true;
+    let gestureInputMode = 'motion';
+    let gestureActiveMode = null;
+    let nativeGestureTraining = null;
     let gestureActionBusy = false;
     let gestureAudioCtx = null;
     let lastRawNotificationAt = 0;
@@ -736,13 +739,14 @@
     function loadGestureSettings() {
         try {
             const parsed = JSON.parse(localStorage.getItem(GESTURE_PROFILES_KEY) || '[]');
-            if (Array.isArray(parsed)) gestureProfiles = parsed.filter(g => g && g.id && Array.isArray(g.template));
+            if (Array.isArray(parsed)) gestureProfiles = parsed.filter(g => g && g.id && ((g.mode === 'native' && g.nativeKey) || Array.isArray(g.template)));
         } catch (_) { gestureProfiles = []; }
         try {
             const settings = JSON.parse(localStorage.getItem(GESTURE_SETTINGS_KEY) || '{}');
             if (Number.isFinite(Number(settings.threshold))) gestureConfidenceThreshold = Math.max(45, Math.min(90, Number(settings.threshold)));
             gestureAutoStart = !!settings.autoStart;
             gestureVibrate = settings.vibrate !== false;
+            if (settings.inputMode === 'native' || settings.inputMode === 'motion') gestureInputMode = settings.inputMode;
         } catch (_) {}
         const threshold = el('ringGestureSensitivity');
         if (threshold) threshold.value = String(gestureConfidenceThreshold);
@@ -752,6 +756,8 @@
         if (auto) auto.checked = gestureAutoStart;
         const vib = el('ringGestureVibrate');
         if (vib) vib.checked = gestureVibrate;
+        const mode = el('ringGestureMode');
+        if (mode) mode.value = gestureInputMode;
         renderGestureProfiles();
     }
 
@@ -761,10 +767,38 @@
             localStorage.setItem(GESTURE_SETTINGS_KEY, JSON.stringify({
                 threshold: gestureConfidenceThreshold,
                 autoStart: gestureAutoStart,
-                vibrate: gestureVibrate
+                vibrate: gestureVibrate,
+                inputMode: gestureInputMode
             }));
         } catch (_) {}
         renderGestureProfiles();
+    }
+
+    const GESTURE_PRESET_NAMES = [
+        'Scatto a destra', 'Scatto a sinistra', 'Movimento su', 'Movimento giù',
+        'Rotazione oraria', 'Rotazione antioraria', 'Movimento avanti', 'Movimento indietro', 'Doppio movimento'
+    ];
+
+    function selectedGestureName() {
+        const preset = el('ringGestureNamePreset')?.value || 'Scatto a destra';
+        if (preset === '__custom__') return (el('ringGestureCustomName')?.value || '').trim() || `Gesto ${gestureProfiles.length + 1}`;
+        return preset;
+    }
+
+    function setGestureNameUi(name) {
+        const preset = el('ringGestureNamePreset');
+        const custom = el('ringGestureCustomName');
+        const wrap = el('ringGestureCustomNameWrap');
+        if (!preset) return;
+        if (GESTURE_PRESET_NAMES.includes(name)) {
+            preset.value = name;
+            if (custom) custom.value = '';
+            if (wrap) wrap.style.display = 'none';
+        } else {
+            preset.value = '__custom__';
+            if (custom) custom.value = name || '';
+            if (wrap) wrap.style.display = 'block';
+        }
     }
 
     function renderGestureProfiles() {
@@ -794,7 +828,7 @@
             top.className = 'gesture-profile-top';
             const label = document.createElement('div');
             label.className = 'gesture-profile-name';
-            label.textContent = profile.name;
+            label.textContent = `${profile.name}${profile.mode === 'native' ? ' · nativo' : ''}`;
             const enabled = document.createElement('input');
             enabled.type = 'checkbox'; enabled.checked = profile.enabled !== false;
             enabled.title = 'Abilita/disabilita gesto';
@@ -824,10 +858,13 @@
             const retrain = document.createElement('button');
             retrain.type = 'button'; retrain.className = 'gesture-mini-btn'; retrain.textContent = '🎯 Riregistra';
             retrain.addEventListener('click', () => {
-                const n = el('ringGestureName'); const a = el('ringGestureAction'); const u = el('ringGestureUrl');
-                if (n) n.value = profile.name;
+                const a = el('ringGestureAction'); const u = el('ringGestureUrl'); const mode = el('ringGestureMode');
+                setGestureNameUi(profile.name);
                 if (a) a.value = profile.action;
                 if (u) u.value = profile.url || '';
+                if (mode) mode.value = profile.mode === 'native' ? 'native' : 'motion';
+                gestureInputMode = profile.mode === 'native' ? 'native' : 'motion';
+                window.ringGestureActionChanged();
                 window.ringRecordGesture(profile.id);
             });
             const del = document.createElement('button');
@@ -932,7 +969,7 @@
         if (!seq || !gestureProfiles.length) return;
         let best = null;
         for (const profile of gestureProfiles) {
-            if (profile.enabled === false || !Array.isArray(profile.template)) continue;
+            if (profile.enabled === false || profile.mode === 'native' || !Array.isArray(profile.template)) continue;
             const dist = gestureDistance(profile.template, seq);
             // Empirical score: identical trajectory ≈100; ~0.2 RMS difference ≈67.
             const confidence = Math.max(0, Math.min(100, Math.round(100 * Math.exp(-2.0 * dist))));
@@ -950,7 +987,7 @@
 
     function maybeStartLiveGesture(acc, previous) {
         if (!gestureMode || gestureTraining || gestureLiveCapture || Date.now() - lastGestureAt < 1500) return;
-        const enabledProfiles = gestureProfiles.filter(g => g.enabled !== false);
+        const enabledProfiles = gestureProfiles.filter(g => g.enabled !== false && g.mode !== 'native' && Array.isArray(g.template));
         if (!enabledProfiles.length || !previous) return;
         const dx = acc.gX - previous.gX, dy = acc.gY - previous.gY, dz = acc.gZ - previous.gZ;
         const impulse = Math.hypot(dx, dy, dz);
@@ -963,17 +1000,36 @@
 
     async function recordGestureProfile(replaceId = null) {
         if (!ringDevice?.gatt?.connected) throw new Error('Collega prima l’anello');
-        const name = (el('ringGestureName')?.value || '').trim() || `Gesto ${gestureProfiles.length + 1}`;
+        const name = selectedGestureName();
         const action = el('ringGestureAction')?.value || 'vibrate';
         let url = (el('ringGestureUrl')?.value || '').trim();
         if (action === 'open-url' && !/^https:\/\//i.test(url)) throw new Error('Per “Apri link” inserisci un indirizzo https:// valido');
-        if (!gestureMode) await startGestures(true);
+        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        if (!gestureMode || gestureActiveMode !== gestureInputMode) {
+            if (gestureMode) await stopGestures(true);
+            await startGestures(true);
+        }
 
         const btn = el('ringGestureRecordBtn');
         if (btn) btn.disabled = true;
+
+        if (gestureInputMode === 'native') {
+            if (nativeGestureTraining?.timer) clearTimeout(nativeGestureTraining.timer);
+            metricText('ringGestureTraining', 'FAI IL GESTO');
+            metricText('ringGestureConfidence', '--');
+            setRingStatus(`Registrazione nativa “${name}”: esegui ora il gesto dell’anello.`, 'info');
+            nativeGestureTraining = { name, action, url, replaceId, timer: null };
+            nativeGestureTraining.timer = setTimeout(() => {
+                nativeGestureTraining = null;
+                if (btn) btn.disabled = false;
+                metricText('ringGestureTraining', 'Nessun comando');
+                setRingStatus('Nessun comando nativo ricevuto. Se serve, abilita “Controllo gestuale” in QRing una volta e poi torna qui.', 'warning');
+            }, 12000);
+            return;
+        }
+
         metricText('ringGestureTraining', 'Preparati…');
         setRingStatus(`Registrazione gesto “${name}”: preparati.`, 'info');
-        // Suppress recognition during the countdown so an old gesture cannot fire.
         gestureTraining = { samples: [], name, action, url, replaceId, countdown: true };
         try {
             for (const n of [3,2,1]) {
@@ -992,7 +1048,7 @@
             const template = resampleGesture(training.samples);
             if (!template) throw new Error('Movimento non rilevato abbastanza bene. Riprova con un gesto più deciso.');
             const id = replaceId || `${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`;
-            const profile = { id, name, action, url, template, enabled: true, createdAt: new Date().toISOString() };
+            const profile = { id, name, action, url, mode: 'motion', template, enabled: true, createdAt: new Date().toISOString() };
             const idx = gestureProfiles.findIndex(g => g.id === id);
             if (idx >= 0) gestureProfiles[idx] = profile; else gestureProfiles.push(profile);
             saveGestureSettings();
@@ -1121,6 +1177,44 @@
         });
     }
 
+    function nativeKeySignature(event) {
+        return `${event.code || ''}|${event.key || ''}`;
+    }
+
+    async function handleNativeGestureKey(event) {
+        if (!gestureMode || gestureActiveMode !== 'native' || event.repeat) return;
+        const sig = nativeKeySignature(event);
+        if (!sig || sig === '|') return;
+        gestureSampleCount++;
+        metricText('ringGestureSamples', String(gestureSampleCount));
+        metricText('ringGesture', `Nativo: ${event.key || event.code || 'comando'}`);
+
+        if (nativeGestureTraining) {
+            const training = nativeGestureTraining;
+            if (training.timer) clearTimeout(training.timer);
+            nativeGestureTraining = null;
+            const id = training.replaceId || `${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`;
+            const profile = { id, name: training.name, action: training.action, url: training.url, mode: 'native', nativeKey: sig, nativeCode: event.code || '', nativeLabel: event.key || event.code || sig, enabled: true, createdAt: new Date().toISOString() };
+            const idx = gestureProfiles.findIndex(g => g.id === id);
+            if (idx >= 0) gestureProfiles[idx] = profile; else gestureProfiles.push(profile);
+            saveGestureSettings();
+            metricText('ringGestureTraining', 'Salvato ✓');
+            metricText('ringGestureConfidence', '100%');
+            if (el('ringGestureRecordBtn')) el('ringGestureRecordBtn').disabled = false;
+            setRingStatus(`Gesto nativo “${profile.name}” salvato. Azione: ${gestureActionLabel(profile.action)}.`, 'success');
+            return;
+        }
+
+        const profile = gestureProfiles.find(g => g.enabled !== false && g.mode === 'native' && g.nativeKey === sig);
+        if (!profile) { metricText('ringGestureConfidence', '--'); return; }
+        metricText('ringGestureConfidence', '100%');
+        if (Date.now() - lastGestureAt < 700) return;
+        lastGestureAt = Date.now();
+        await executeGestureAction(profile);
+    }
+
+    window.addEventListener('keydown', handleNativeGestureKey, true);
+
     async function quietSensors({ includeRaw = true, verifyRaw = true } = {}) {
         if (!ringDevice?.gatt?.connected) return { rawStopped: true };
 
@@ -1157,24 +1251,36 @@
     async function startGestures(quiet = false) {
         if (!ringDevice?.gatt?.connected) throw new Error('Anello non connesso');
         if (measureState) await stopCurrentMeasurement(true);
-        // Clear any stale optical stream before enabling motion streaming.
+        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
         await quietSensors({ includeRaw: true, verifyRaw: false });
-        await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
         gestureMode = true;
+        gestureActiveMode = gestureInputMode;
         gestureSampleCount = 0;
         lastAccel = null;
         metricText('ringGestureSamples', '0');
-        metricText('ringGesture', gestureProfiles.length ? 'In ascolto…' : 'In ascolto / da programmare');
         metricText('ringGestureTraining', 'Pronto');
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '⏹️ Ferma gesti';
-        if (!quiet) setRingStatus('Modalità gesti attiva. L’app riceve il movimento dall’anello e riconosce i profili programmati.', 'success');
+
+        if (gestureActiveMode === 'native') {
+            metricText('ringGesture', 'Nativo: in ascolto…');
+            metricText('ringAccelX', '--'); metricText('ringAccelY', '--'); metricText('ringAccelZ', '--');
+            if (!quiet) setRingStatus('Gesti nativi attivi: il flusso X/Y/Z non viene acceso. I LED devono restare spenti mentre l’app ascolta i comandi del R09.', 'success');
+            return;
+        }
+
+        await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
+        metricText('ringGesture', gestureProfiles.some(g => g.mode !== 'native') ? 'In ascolto…' : 'In ascolto / da programmare');
+        if (!quiet) setRingStatus('Gesti personalizzati X/Y/Z attivi. Su questo firmware i LED possono restare accesi finché il flusso movimento è attivo.', 'success');
     }
 
     async function stopGestures(quiet = false) {
         // Set the UI state first so incoming trailing packets are ignored immediately.
         gestureMode = false;
+        gestureActiveMode = null;
         lastAccel = null;
         gestureTraining = null;
+        if (nativeGestureTraining?.timer) clearTimeout(nativeGestureTraining.timer);
+        nativeGestureTraining = null;
         if (gestureLiveCapture?.timer) clearTimeout(gestureLiveCapture.timer);
         gestureLiveCapture = null;
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '🖐️ Attiva gesti';
@@ -1341,8 +1447,26 @@
         gestureConfidenceThreshold = Math.max(45, Math.min(90, threshold));
         gestureAutoStart = !!el('ringGestureAutoStart')?.checked;
         gestureVibrate = !!el('ringGestureVibrate')?.checked;
+        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
         metricText('ringGestureSensitivityValue', `${gestureConfidenceThreshold}%`);
         saveGestureSettings();
+    };
+
+    window.ringGestureNameChanged = function ringGestureNameChanged() {
+        const custom = el('ringGestureNamePreset')?.value === '__custom__';
+        const wrap = el('ringGestureCustomNameWrap');
+        if (wrap) wrap.style.display = custom ? 'block' : 'none';
+    };
+
+    window.ringGestureModeChanged = async function ringGestureModeChanged() {
+        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        saveGestureSettings();
+        if (gestureMode && gestureActiveMode !== gestureInputMode) {
+            try { await stopGestures(true); await startGestures(false); }
+            catch (e) { setRingStatus(`Cambio modalità gesti non riuscito: ${e.message || e}`, 'warning'); }
+        } else if (gestureInputMode === 'native') {
+            setRingStatus('Modalità nativa selezionata. Quando la attivi i LED ottici restano spenti; registra un gesto eseguendolo dopo “Registra gesto”.', 'info');
+        }
     };
 
     window.ringGestureActionChanged = function ringGestureActionChanged() {
@@ -1433,7 +1557,10 @@
         clearPending('Anello disconnesso');
         syncAllRunning = false;
         gestureMode = false;
+        gestureActiveMode = null;
         gestureTraining = null;
+        if (nativeGestureTraining?.timer) clearTimeout(nativeGestureTraining.timer);
+        nativeGestureTraining = null;
         if (gestureLiveCapture?.timer) clearTimeout(gestureLiveCapture.timer);
         gestureLiveCapture = null;
         primaryWrite = null; primaryNotify = null; bigWrite = null; bigNotify = null; gattServer = null;
@@ -1461,6 +1588,7 @@
         restoreMetrics();
         loadGestureSettings();
         window.ringGestureActionChanged();
+        window.ringGestureNameChanged();
         setConnectedUi(false);
         setBusyUi(false);
         if (!navigator.bluetooth) setRingStatus('Bluetooth diretto non disponibile qui. Usa Chrome/Chromium su Android tramite HTTPS.', 'warning');
