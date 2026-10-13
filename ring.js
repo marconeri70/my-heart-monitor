@@ -1,8 +1,9 @@
 /*
  * COLMI R09 / QRing BLE integration for Heart Monitor Ultra.
  * Direct Web Bluetooth connection: no QRing cloud is required for these reads.
- * Protocol references: Nordic UART-like service used by COLMI R0x family.
- * This module currently implements connection, battery and live heart-rate.
+ *
+ * R09 note: the QRing-compatible spot HR flow uses command 0x69 and the ring
+ * returns repeated 0x69 packets with type/error/value in bytes 1/2/3.
  */
 (function () {
     'use strict';
@@ -12,7 +13,7 @@
     const NOTIFY_CHAR_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
     const CMD_BATTERY = 0x03;
-    const CMD_REALTIME_COMPUTED_HR = 0x1e;
+    const CMD_REALTIME_HR_NOTIFY = 0x1e; // receive-only on many R09 firmwares
     const CMD_MANUAL_MEASUREMENT = 0x69;
     const CMD_STOP_MEASUREMENT = 0x6a;
     const HR_SUBTYPE = 0x01;
@@ -21,10 +22,14 @@
     let gattServer = null;
     let writeCharacteristic = null;
     let notifyCharacteristic = null;
-    let hrPollTimer = null;
-    let hrKeepAliveTimer = null;
+
+    let hrFallbackTimer = null;
     let hrAutoStopTimer = null;
+    let hrSuccessStopTimer = null;
     let hrRunning = false;
+    let hrMode = 'qring';
+    let lastBpm = 0;
+    let validHrPackets = 0;
 
     function el(id) { return document.getElementById(id); }
 
@@ -62,6 +67,13 @@
         return packet;
     }
 
+    function hasValidChecksum(bytes) {
+        if (bytes.length !== 16) return true; // tolerate non-standard notifications
+        let sum = 0;
+        for (let i = 0; i < 15; i++) sum = (sum + bytes[i]) & 0xff;
+        return sum === bytes[15];
+    }
+
     async function writePacket(packet) {
         if (!writeCharacteristic || !ringDevice?.gatt?.connected) {
             throw new Error('Anello non connesso');
@@ -80,67 +92,114 @@
 
     function updateHeartRate(bpm, source) {
         if (!Number.isFinite(bpm) || bpm < 30 || bpm > 220) return;
+
+        lastBpm = bpm;
+        validHrPackets += 1;
+
         if (el('ringBpm')) el('ringBpm').textContent = `${bpm} bpm`;
-        if (el('ringLastUpdate')) el('ringLastUpdate').textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (el('ringLastUpdate')) {
+            el('ringLastUpdate').textContent = new Date().toLocaleTimeString('it-IT', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        }
 
         // Porta automaticamente il valore nel campo BPM già presente nell'app.
         const bpmInput = el('bpm');
         if (bpmInput) bpmInput.value = bpm;
 
-        setRingStatus(`Battito rilevato: ${bpm} bpm${source ? ` · ${source}` : ''}. Il valore è stato copiato nella misurazione.`, 'success');
+        setRingStatus(`Battito rilevato: ${bpm} bpm${source ? ` · ${source}` : ''}. Attendo qualche secondo per stabilizzare il valore.`, 'success');
+
+        // Dopo il primo valore valido lasciamo arrivare alcuni campioni e poi fermiamo
+        // automaticamente il sensore, così non resta acceso inutilmente.
+        if (!hrSuccessStopTimer) {
+            hrSuccessStopTimer = setTimeout(() => {
+                if (hrRunning) {
+                    void stopHeartRate(true, `Misurazione completata. Ultimo valore: ${lastBpm} bpm.`);
+                }
+            }, 7000);
+        }
     }
 
     function onNotification(event) {
         const view = event.target.value;
         const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         if (!bytes.length) return;
+        if (!hasValidChecksum(bytes)) return;
 
         const command = bytes[0];
+        const baseCommand = command & 0x7f;
+        const isError = (command & 0x80) !== 0;
+
+        if (isError) {
+            // 0x9E is commonly the R09 rejection of a phone-initiated 0x1E request.
+            // We no longer send that request, but surface any protocol error for diagnostics.
+            setRingStatus(`L’anello ha rifiutato il comando 0x${baseCommand.toString(16).padStart(2, '0')}.`, 'warning');
+            return;
+        }
 
         if (command === CMD_BATTERY && bytes.length >= 3) {
             updateBattery(bytes[1], bytes[2] === 1);
             return;
         }
 
-        // R09: risposta alla misura manuale (0x69). byte[1]=tipo, byte[2]=errore, byte[3]=valore.
+        // QRing/R09: [0x69, type, errCode, value, ...]
         if (command === CMD_MANUAL_MEASUREMENT && bytes.length >= 4 && bytes[1] === HR_SUBTYPE) {
             const errorCode = bytes[2];
+            const value = bytes[3];
+
             if (errorCode === 0) {
-                updateHeartRate(bytes[3], 'R09');
+                if (value >= 30) {
+                    updateHeartRate(value, hrMode === 'qring' ? 'R09/QRing' : 'R09 fallback');
+                } else {
+                    setRingStatus('Sensore in acquisizione… tieni il dito fermo. Il R09 può impiegare 20–30 secondi.', 'info');
+                }
             } else if (errorCode === 1) {
-                setRingStatus('Misurazione non riuscita. Tieni l’anello aderente al dito e riprova.', 'error');
+                setRingStatus('L’anello non rileva bene il dito. Sistemalo più aderente e resta fermo.', 'warning');
             } else if (errorCode === 2) {
-                setRingStatus('Il sensore non ha ancora dati sufficienti. Attendi qualche secondo.', 'warning');
+                setRingStatus('Dati ancora insufficienti. Continuo ad attendere il sensore…', 'info');
+            } else {
+                setRingStatus(`Risposta sensore non prevista (codice ${errorCode}).`, 'warning');
             }
             return;
         }
 
-        // Alcuni firmware espongono anche il BPM già calcolato con il comando 0x1E.
-        if (command === CMD_REALTIME_COMPUTED_HR && bytes.length >= 2) {
-            updateHeartRate(bytes[1], 'sensore');
+        // Alcuni firmware inviano spontaneamente 0x1E. Non lo richiediamo dal telefono.
+        if (command === CMD_REALTIME_HR_NOTIFY && bytes.length >= 2) {
+            let candidate = bytes[1];
+            if (bytes.length >= 3 && bytes[1] === HR_SUBTYPE && bytes[2] >= 30) candidate = bytes[2];
+            updateHeartRate(candidate, 'R09 realtime');
         }
     }
 
-    function localStopHeartRateUi(message) {
-        if (hrPollTimer) clearInterval(hrPollTimer);
-        if (hrKeepAliveTimer) clearInterval(hrKeepAliveTimer);
+    function clearHrTimers() {
+        if (hrFallbackTimer) clearTimeout(hrFallbackTimer);
         if (hrAutoStopTimer) clearTimeout(hrAutoStopTimer);
-        hrPollTimer = null;
-        hrKeepAliveTimer = null;
+        if (hrSuccessStopTimer) clearTimeout(hrSuccessStopTimer);
+        hrFallbackTimer = null;
         hrAutoStopTimer = null;
+        hrSuccessStopTimer = null;
+    }
+
+    function localStopHeartRateUi() {
+        clearHrTimers();
         hrRunning = false;
         const btn = el('ringHrBtn');
         if (btn) btn.textContent = '❤️ Avvia battito';
-        if (message) setRingStatus(message, 'info');
     }
 
-    async function stopHeartRate(sendStop = true) {
+    async function sendHrStop() {
+        if (!ringDevice?.gatt?.connected) return;
+        // QRing stop: 6A 01 <ultimo_bpm> 00. Se non c'è ancora un valore usa 0.
+        try {
+            await writePacket(makePacket(CMD_STOP_MEASUREMENT, [HR_SUBTYPE, lastBpm || 0, 0]));
+        } catch (_) {}
+    }
+
+    async function stopHeartRate(sendStop = true, message = 'Misurazione del battito terminata.') {
         if (!hrRunning) return;
+        if (sendStop) await sendHrStop();
         localStopHeartRateUi();
-        if (sendStop && ringDevice?.gatt?.connected) {
-            try { await writePacket(makePacket(CMD_STOP_MEASUREMENT, [HR_SUBTYPE, 0, 0])); } catch (_) {}
-        }
-        setRingStatus('Misurazione del battito terminata.', 'info');
+        setRingStatus(message, lastBpm ? 'success' : 'info');
     }
 
     async function startHeartRate() {
@@ -154,30 +213,44 @@
         }
 
         hrRunning = true;
+        hrMode = 'qring';
+        lastBpm = 0;
+        validHrPackets = 0;
+        clearHrTimers();
+
+        if (el('ringBpm')) el('ringBpm').textContent = '--';
         const btn = el('ringHrBtn');
         if (btn) btn.textContent = '⏹️ Ferma battito';
-        setRingStatus('Misurazione in corso… tieni il dito fermo. Il primo valore può richiedere 10–30 secondi.', 'info');
+        setRingStatus('Avvio misurazione R09… resta fermo. Il primo valore può richiedere 20–30 secondi.', 'info');
 
         try {
-            // Avvia la misura manuale HR: 0x69, tipo 0x01, azione START 0x01.
-            await writePacket(makePacket(CMD_MANUAL_MEASUREMENT, [HR_SUBTYPE, 0x01]));
+            // Sequenza usata dalla famiglia QRing per la misura spot HR.
+            // 69 01 00 = tipo HR, richiesta semplice.
+            await writePacket(makePacket(CMD_MANUAL_MEASUREMENT, [HR_SUBTYPE, 0x00]));
 
-            // Poll del valore computato, utile su alcune revisioni firmware.
-            const poll = async () => {
-                if (!hrRunning || !ringDevice?.gatt?.connected) return;
-                try { await writePacket(makePacket(CMD_REALTIME_COMPUTED_HR, [0x03])); } catch (_) {}
-            };
-            await poll();
-            hrPollTimer = setInterval(poll, 2000);
+            // Alcune revisioni accettano invece la variante action=START (69 01 01).
+            // Se dopo 40 secondi non è arrivato un BPM valido, la proviamo una sola volta.
+            hrFallbackTimer = setTimeout(async () => {
+                if (!hrRunning || lastBpm > 0 || !ringDevice?.gatt?.connected) return;
+                try {
+                    await sendHrStop();
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    hrMode = 'fallback';
+                    setRingStatus('Nessun BPM dalla prima modalità. Provo la modalità compatibile alternativa…', 'info');
+                    await writePacket(makePacket(CMD_MANUAL_MEASUREMENT, [HR_SUBTYPE, 0x01]));
+                } catch (error) {
+                    setRingStatus(`Errore nel secondo tentativo: ${error.message || error}`, 'error');
+                }
+            }, 40000);
 
-            // Mantiene viva la sessione di misura senza riavviare il sensore.
-            hrKeepAliveTimer = setInterval(async () => {
-                if (!hrRunning || !ringDevice?.gatt?.connected) return;
-                try { await writePacket(makePacket(CMD_MANUAL_MEASUREMENT, [HR_SUBTYPE, 0x03])); } catch (_) {}
-            }, 10000);
-
-            // Evita di tenere il sensore acceso indefinitamente.
-            hrAutoStopTimer = setTimeout(() => { void stopHeartRate(true); }, 60000);
+            // Tempo sufficiente anche per il secondo tentativo e il warm-up ottico.
+            hrAutoStopTimer = setTimeout(() => {
+                if (hrRunning) {
+                    void stopHeartRate(true, lastBpm
+                        ? `Misurazione completata. Ultimo valore: ${lastBpm} bpm.`
+                        : 'Nessun battito valido ricevuto. Riprova tenendo l’anello ben aderente al dito.');
+                }
+            }, 100000);
         } catch (error) {
             localStopHeartRateUi();
             setRingStatus(`Errore durante la misurazione: ${error.message || error}`, 'error');
