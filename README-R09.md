@@ -37,3 +37,10 @@ Big Data (sonno):
 ## Nota importante
 
 I valori dell'anello sono dati wellness e non misure cliniche. La pressione arteriosa e la glicemia “stimate” dall'anello non sono importate nella app perché non sono considerate misurazioni affidabili. La pressione resta inserita manualmente da uno strumento dedicato.
+
+
+## v4 protocol fix
+- Corrected V2 big-data requests: the secondary characteristic receives raw 7-byte commands, not 16-byte UART frames.
+- Sleep, SpO2 history and R09 temperature history now use the V2 channel.
+- Stress and HRV use their history commands (0x37/0x39) before falling back to spot reads.
+- New-calorie-protocol activity values are converted to kcal correctly (e.g. 2220 protocol units = 2.22 kcal).

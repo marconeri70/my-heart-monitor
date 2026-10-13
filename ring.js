@@ -1,12 +1,12 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v3)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v4)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
  * - battery + device information
  * - spot heart rate
- * - spot SpO2
- * - experimental temperature / stress / HRV (firmware dependent)
+ * - SpO2 live + stored history fallback
+ * - temperature / stress / HRV from the ring history when available
  * - detailed daily activity (steps, calories, distance)
  * - sleep summary through the COLMI big-data service
  * - experimental raw accelerometer / simple gesture hints
@@ -37,6 +37,9 @@
     const CMD_BIG_DATA = 0xbc;
     const CMD_RAW = 0xa1;
     const BIG_DATA_SLEEP = 0x27;
+    const BIG_DATA_SPO2 = 0x2a;
+    const CMD_STRESS_HISTORY = 0x37;
+    const CMD_HRV_HISTORY = 0x39;
 
     const SENSOR = {
         hr:          { subtype: 0x01, label: 'Battito', unit: 'bpm', target: 'ringBpm', timeout: 65000, fallback: 33000 },
@@ -55,7 +58,8 @@
 
     let batteryWaiter = null;
     let stepsState = null;
-    let sleepState = null;
+    let bigState = null;
+    let historyState = null;
     let measureState = null;
     let syncAllRunning = false;
     let gestureMode = false;
@@ -111,7 +115,7 @@
         const now = new Date();
         metrics.lastUpdate = now.toISOString();
         metricText('ringLastUpdate', now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        try { localStorage.setItem('heart_ring_metrics_v3', JSON.stringify(metrics)); } catch (_) {}
+        try { localStorage.setItem('heart_ring_metrics_v4', JSON.stringify(metrics)); } catch (_) {}
     }
 
     function formatMinutes(total) {
@@ -129,7 +133,7 @@
         metricText('ringStress', metrics.stress == null ? '--' : `${metrics.stress}`);
         metricText('ringHrv', metrics.hrv == null ? '--' : `${metrics.hrv} ms`);
         metricText('ringSteps', metrics.steps == null ? '--' : Number(metrics.steps).toLocaleString('it-IT'));
-        metricText('ringCalories', metrics.calories == null ? '--' : `${Math.round(metrics.calories)} kcal`);
+        metricText('ringCalories', metrics.calories == null ? '--' : `${metrics.calories < 10 ? metrics.calories.toFixed(1) : Math.round(metrics.calories)} kcal`);
         metricText('ringDistance', metrics.distance == null ? '--' : metrics.distance >= 1000 ? `${(metrics.distance / 1000).toFixed(2)} km` : `${Math.round(metrics.distance)} m`);
         metricText('ringSleep', metrics.sleep == null ? '--' : formatMinutes(metrics.sleep));
         metricText('ringSleepDeep', metrics.deep == null ? '--' : formatMinutes(metrics.deep));
@@ -147,7 +151,7 @@
 
     function restoreMetrics() {
         try {
-            const saved = JSON.parse(localStorage.getItem('heart_ring_metrics_v3') || 'null');
+            const saved = JSON.parse(localStorage.getItem('heart_ring_metrics_v4') || localStorage.getItem('heart_ring_metrics_v3') || 'null');
             if (saved && typeof saved === 'object') Object.assign(metrics, saved);
         } catch (_) {}
         renderMetrics();
@@ -406,8 +410,9 @@
             const totals = s.details.reduce((acc, d) => {
                 acc.steps += d.steps; acc.calories += d.calories; acc.distance += d.distance; return acc;
             }, { steps: 0, calories: 0, distance: 0 });
-            // COLMI calorie protocols commonly store milli-/scaled values. If implausibly large, normalize.
-            if (totals.calories > 5000) totals.calories = totals.calories / 1000;
+            // New calorie protocol: parser multiplies the raw value by 10, while QRing/RingCLI
+            // displays the resulting total divided by 1000 (kcal). Example: 2220 -> 2.22 kcal.
+            if (s.newCalorieProtocol) totals.calories = totals.calories / 1000;
             metrics.steps = totals.steps;
             metrics.calories = totals.calories;
             metrics.distance = totals.distance;
@@ -443,88 +448,261 @@
         return out;
     }
 
-    function readI16LE(arr, offset) {
-        const v = arr[offset] | (arr[offset + 1] << 8);
-        return v >= 0x8000 ? v - 0x10000 : v;
+    function readU16LE(arr, offset) {
+        return (arr[offset] | (arr[offset + 1] << 8)) >>> 0;
     }
 
-    function parseSleepResponse(data) {
-        if (data.length < 7 || data[0] !== CMD_BIG_DATA || data[1] !== BIG_DATA_SLEEP) return null;
-        const dataLen = data[2] | (data[3] << 8);
-        if (dataLen === 0 || data[6] === 0) return { totalMinutes: 0, deep: 0, light: 0, rem: 0, awake: 0 };
-        const sleepDays = data[6];
-        const days = [];
-        let idx = 7;
-        for (let d = 0; d < sleepDays; d++) {
-            if (idx + 6 > data.length) break;
-            const daysAgo = data[idx];
-            const curDayBytes = data[idx + 1];
-            const sleepStart = readI16LE(data, idx + 2);
-            const sleepEnd = readI16LE(data, idx + 4);
-            const periods = [];
-            let p = idx + 6;
-            const end = Math.min(idx + 1 + curDayBytes, data.length);
-            while (p + 1 < end) {
-                let type = data[p];
-                const minutes = data[p + 1];
-                if (type === 0) type = 5; // no-data segments are treated as awake in known parsers
-                if (type !== 1 && minutes > 0) periods.push({ type, minutes });
-                p += 2;
-            }
-            const sum = type => periods.filter(x => x.type === type).reduce((a, x) => a + x.minutes, 0);
-            days.push({
-                daysAgo, sleepStart, sleepEnd, periods,
-                totalMinutes: periods.reduce((a, x) => a + x.minutes, 0),
-                light: sum(2), deep: sum(3), rem: sum(4), awake: sum(5)
-            });
-            idx = end;
-        }
-        return days.find(x => x.daysAgo === 0) || days[0] || { totalMinutes: 0, deep: 0, light: 0, rem: 0, awake: 0 };
+    function bigDataCommand(dataType) {
+        // IMPORTANT: the V2 characteristic does NOT use the 16-byte UART framing.
+        // QRing-compatible request: BC <type> 01 00 FF 00 FF (7 raw bytes).
+        return new Uint8Array([CMD_BIG_DATA, dataType & 0xff, 0x01, 0x00, 0xff, 0x00, 0xff]);
+    }
+
+    function finishBigState(data = null, error = null) {
+        const s = bigState;
+        if (!s) return;
+        bigState = null;
+        clearTimeout(s.timer);
+        if (error) s.reject(error); else s.resolve(data);
     }
 
     function onBigNotification(event) {
         const view = event.target.value;
         const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-        const s = sleepState;
+        const s = bigState;
         if (!s || !bytes.length) return;
         s.chunks.push(new Uint8Array(bytes));
         s.total += bytes.length;
         if (!Number.isFinite(s.expected) && s.total >= 4) {
             const all = concatChunks(s.chunks, s.total);
-            s.expected = (all[2] | (all[3] << 8)) + 6;
+            s.expected = readU16LE(all, 2) + 6;
         }
         if (Number.isFinite(s.expected) && s.total >= s.expected) {
-            clearTimeout(s.timer);
-            sleepState = null;
             const all = concatChunks(s.chunks, s.total).slice(0, s.expected);
-            const result = parseSleepResponse(all);
-            if (!result) { s.reject(new Error('Formato sonno non riconosciuto')); return; }
-            metrics.sleep = result.totalMinutes;
-            metrics.deep = result.deep;
-            metrics.light = result.light;
-            metrics.rem = result.rem;
-            metrics.awake = result.awake;
-            renderMetrics(); markUpdated();
-            s.resolve(result);
+            finishBigState(all);
         }
     }
 
-    function requestSleep() {
-        if (!bigWrite || !bigNotify) return Promise.reject(new Error('Il firmware non espone il canale sonno')); 
-        if (sleepState?.timer) clearTimeout(sleepState.timer);
+    function requestBigData(dataType, timeout = 7000) {
+        if (!bigWrite || !bigNotify) return Promise.reject(new Error('Canale dati avanzati non disponibile'));
+        if (bigState) finishBigState(null, new Error('Nuova richiesta dati avanzati'));
         return new Promise(async (resolve, reject) => {
-            const state = { chunks: [], total: 0, expected: Infinity, resolve, reject, timer: null };
-            sleepState = state;
+            const state = { dataType, chunks: [], total: 0, expected: Infinity, resolve, reject, timer: null };
+            bigState = state;
             state.timer = setTimeout(() => {
-                if (sleepState === state) sleepState = null;
-                reject(new Error('Timeout sonno'));
-            }, 12000);
+                if (bigState === state) finishBigState(null, new Error(`Timeout dati 0x${dataType.toString(16)}`));
+            }, timeout);
             try {
-                await writeBig(makePacket(CMD_BIG_DATA, [BIG_DATA_SLEEP, 0x00, 0x00, 0xff, 0xff]));
+                await writeBig(bigDataCommand(dataType));
             } catch (e) {
-                clearTimeout(state.timer); sleepState = null; reject(e);
+                if (bigState === state) finishBigState(null, e);
             }
         });
+    }
+
+    function parseSleepResponse(data) {
+        if (!data || data.length < 7 || data[0] !== CMD_BIG_DATA || data[1] !== BIG_DATA_SLEEP) return null;
+        const packetLength = readU16LE(data, 2);
+        if (packetLength < 2 || data[6] === 0) return { totalMinutes: 0, deep: 0, light: 0, rem: 0, awake: 0 };
+        const daysInPacket = data[6];
+        let idx = 7;
+        const sessions = [];
+
+        for (let d = 0; d < daysInPacket; d++) {
+            if (idx + 6 > data.length) break;
+            const daysAgo = data[idx++];
+            const dayBytes = data[idx++];
+            const sleepStart = readU16LE(data, idx); idx += 2;
+            const sleepEnd = readU16LE(data, idx); idx += 2;
+            const numStages = Math.max(0, Math.floor((dayBytes - 4) / 2));
+            const periods = [];
+            for (let j = 0; j < numStages && idx + 1 < data.length; j++) {
+                const type = data[idx++];
+                const minutes = data[idx++];
+                if (minutes > 0 && [2,3,4,5].includes(type)) periods.push({ type, minutes });
+            }
+            const sum = type => periods.filter(x => x.type === type).reduce((a, x) => a + x.minutes, 0);
+            sessions.push({
+                daysAgo, sleepStart, sleepEnd, periods,
+                totalMinutes: periods.reduce((a, x) => a + x.minutes, 0),
+                light: sum(2), deep: sum(3), rem: sum(4), awake: sum(5)
+            });
+        }
+        return sessions.find(x => x.daysAgo === 0) || sessions.sort((a,b) => a.daysAgo - b.daysAgo)[0] ||
+            { totalMinutes: 0, deep: 0, light: 0, rem: 0, awake: 0 };
+    }
+
+    async function requestSleep() {
+        const data = await requestBigData(BIG_DATA_SLEEP, 10000);
+        const result = parseSleepResponse(data);
+        if (!result) throw new Error('Formato sonno non riconosciuto');
+        metrics.sleep = result.totalMinutes || null;
+        metrics.deep = result.deep || null;
+        metrics.light = result.light || null;
+        metrics.rem = result.rem || null;
+        metrics.awake = result.awake || null;
+        renderMetrics(); markUpdated();
+        return result;
+    }
+
+    function parseSpo2History(data) {
+        if (!data || data.length < 7 || data[0] !== CMD_BIG_DATA || data[1] !== BIG_DATA_SPO2) return [];
+        const length = readU16LE(data, 2);
+        const end = Math.min(data.length, 6 + length);
+        const rows = [];
+        let idx = 6;
+        while (idx + 49 <= end) {
+            const daysAgo = data[idx++];
+            for (let hour = 0; hour < 24; hour++) {
+                const min = data[idx++];
+                const max = data[idx++];
+                if (min > 0 && max > 0) rows.push({ daysAgo, hour, value: Math.round((min + max) / 2) });
+            }
+        }
+        return rows;
+    }
+
+    async function requestSpo2HistoryLatest() {
+        const data = await requestBigData(BIG_DATA_SPO2, 9000);
+        const rows = parseSpo2History(data).filter(x => x.value >= 70 && x.value <= 100);
+        if (!rows.length) return null;
+        rows.sort((a,b) => (a.daysAgo - b.daysAgo) || (b.hour - a.hour));
+        const value = rows[0].value;
+        storeSensor('spo2', value);
+        return value;
+    }
+
+    function parseTemperatureHistory(data) {
+        if (!data || data.length < 7 || data[0] !== CMD_BIG_DATA || data[1] !== 0x25) return [];
+        const length = readU16LE(data, 2);
+        const end = Math.min(data.length, 6 + length);
+        const rows = [];
+        let idx = 6;
+        while (idx + 50 <= end) {
+            const daysAgo = data[idx++];
+            idx += 1; // observed 0x1e separator
+            for (let hour = 0; hour < 24; hour++) {
+                const t00 = data[idx++];
+                const t30 = data[idx++];
+                if (t00 > 0) rows.push({ daysAgo, slot: hour * 2, value: Math.round(((t00 / 10) + 20) * 10) / 10 });
+                if (t30 > 0) rows.push({ daysAgo, slot: hour * 2 + 1, value: Math.round(((t30 / 10) + 20) * 10) / 10 });
+            }
+        }
+        return rows.filter(x => x.value >= 25 && x.value <= 45);
+    }
+
+    async function requestTemperatureHistoryLatest() {
+        const all = [];
+        // R09 rotates completed-day temperature blocks across these request IDs.
+        for (let type = 0x22; type <= 0x2c; type++) {
+            if (type === BIG_DATA_SPO2) continue;
+            try {
+                const data = await requestBigData(type, 2200);
+                all.push(...parseTemperatureHistory(data));
+            } catch (_) {}
+        }
+        if (!all.length) return null;
+        all.sort((a,b) => (a.daysAgo - b.daysAgo) || (b.slot - a.slot));
+        const value = all[0].value;
+        storeSensor('temperature', value);
+        return value;
+    }
+
+    function finishHistoryState(packets = null, error = null) {
+        const s = historyState;
+        if (!s) return;
+        historyState = null;
+        clearTimeout(s.timer);
+        clearTimeout(s.idleTimer);
+        if (error) s.reject(error); else s.resolve(packets || s.packets);
+    }
+
+    function consumeHistoryPacket(bytes) {
+        const s = historyState;
+        if (!s || !bytes.length) return false;
+        const base = bytes[0] & 0x7f;
+        if (base !== s.command) return false;
+        if ((bytes[0] & 0x80) !== 0) {
+            finishHistoryState(null, new Error(`Comando storico 0x${s.command.toString(16)} rifiutato`));
+            return true;
+        }
+        s.packets.push(new Uint8Array(bytes));
+        clearTimeout(s.idleTimer);
+        const subtype = bytes[1];
+        if (subtype === 4 || subtype === 0xff) {
+            finishHistoryState(s.packets);
+            return true;
+        }
+        s.idleTimer = setTimeout(() => {
+            if (historyState === s && s.packets.length) finishHistoryState(s.packets);
+        }, 900);
+        return true;
+    }
+
+    function requestHistoryPackets(command, payload = [], timeout = 7000) {
+        if (!ringDevice?.gatt?.connected) return Promise.reject(new Error('Anello non connesso'));
+        if (historyState) finishHistoryState(null, new Error('Nuova richiesta storica'));
+        return new Promise(async (resolve, reject) => {
+            const state = { command, packets: [], resolve, reject, timer: null, idleTimer: null };
+            historyState = state;
+            state.timer = setTimeout(() => {
+                if (historyState !== state) return;
+                if (state.packets.length) finishHistoryState(state.packets);
+                else finishHistoryState(null, new Error(`Timeout storico 0x${command.toString(16)}`));
+            }, timeout);
+            try { await writePrimary(makePacket(command, payload)); }
+            catch (e) { if (historyState === state) finishHistoryState(null, e); }
+        });
+    }
+
+    function parseLatestHalfHourValue(packets, max = 255) {
+        const values = [];
+        for (const pkt of packets || []) {
+            const subtype = pkt[1];
+            if (subtype === 0 || subtype === 0xff) continue;
+            const start = subtype === 1 ? 3 : 2;
+            for (let i = start; i < Math.min(15, pkt.length - 1); i++) {
+                const v = pkt[i] & 0xff;
+                if (v > 0 && v <= max) values.push(v);
+            }
+        }
+        return values.length ? values[values.length - 1] : null;
+    }
+
+    async function requestStressHistoryLatest() {
+        const packets = await requestHistoryPackets(CMD_STRESS_HISTORY, []);
+        const value = parseLatestHalfHourValue(packets, 99);
+        if (value != null) storeSensor('stress', value);
+        return value;
+    }
+
+    async function requestHrvHistoryLatest() {
+        // daysAgo=0 as little-endian uint32; makePacket pads the remaining payload.
+        const packets = await requestHistoryPackets(CMD_HRV_HISTORY, [0,0,0,0]);
+        const value = parseLatestHalfHourValue(packets, 255);
+        if (value != null) storeSensor('hrv', value);
+        return value;
+    }
+
+    async function getMetricBestEffort(key) {
+        if (key === 'hr') return measureSensor('hr', true);
+        if (key === 'spo2') {
+            try { const v = await requestSpo2HistoryLatest(); if (v != null) return v; } catch (_) {}
+            return measureSensor('spo2', true);
+        }
+        if (key === 'stress') {
+            try { const v = await requestStressHistoryLatest(); if (v != null) return v; } catch (_) {}
+            return measureSensor('stress', true);
+        }
+        if (key === 'hrv') {
+            try { const v = await requestHrvHistoryLatest(); if (v != null) return v; } catch (_) {}
+            return measureSensor('hrv', true);
+        }
+        if (key === 'temperature') {
+            try { const v = await requestTemperatureHistoryLatest(); if (v != null) return v; } catch (_) {}
+            return measureSensor('temperature', true);
+        }
+        return null;
     }
 
     function parseAccelerometer(bytes) {
@@ -578,6 +756,9 @@
             return;
         }
 
+        // Stress/HRV history are multi-packet command-channel replies.
+        if (consumeHistoryPacket(bytes)) return;
+
         if ((command & 0x80) !== 0) {
             // Do not interrupt an all-in-one sync for an unsupported experimental sensor.
             if (!syncAllRunning) setRingStatus(`Comando non accettato dal firmware (0x${command.toString(16)}).`, 'warning');
@@ -601,7 +782,7 @@
             const calRaw = u24be(bytes[5], bytes[6], bytes[7]);
             const dist = u24be(bytes[8], bytes[9], bytes[10]);
             if (st >= 0) metrics.steps = st;
-            metrics.calories = calRaw > 5000 ? calRaw / 1000 : calRaw;
+            metrics.calories = calRaw / 1000;
             metrics.distance = dist;
             renderMetrics(); markUpdated();
         }
@@ -678,7 +859,7 @@
     async function runSensorStep(key, progress, label) {
         setProgress(progress, label);
         try {
-            const value = await measureSensor(key, true);
+            const value = await getMetricBestEffort(key);
             return value;
         } catch (_) { return null; }
     }
@@ -701,24 +882,25 @@
             setProgress(18, 'Sonno…');
             try { await requestSleep(); } catch (_) { unavailable.push('sonno'); }
 
-            const hr = await runSensorStep('hr', 25, 'Battito cardiaco…');
+            const hr = await runSensorStep('hr', 28, 'Battito cardiaco…');
             if (hr == null) unavailable.push('battito');
+            await delay(1000);
 
-            const spo2 = await runSensorStep('spo2', 45, 'Ossigenazione SpO₂…');
+            const spo2 = await runSensorStep('spo2', 48, 'SpO₂: storico + misura diretta…');
             if (spo2 == null) unavailable.push('SpO₂');
 
-            const temp = await runSensorStep('temperature', 63, 'Temperatura (sperimentale)…');
-            if (temp == null) unavailable.push('temperatura');
-
-            const stress = await runSensorStep('stress', 78, 'Stress (sperimentale)…');
+            const stress = await runSensorStep('stress', 64, 'Stress: ultimo dato disponibile…');
             if (stress == null) unavailable.push('stress');
 
-            const hrv = await runSensorStep('hrv', 92, 'HRV (sperimentale)…');
+            const hrv = await runSensorStep('hrv', 78, 'HRV: ultimo dato disponibile…');
             if (hrv == null) unavailable.push('HRV');
+
+            const temp = await runSensorStep('temperature', 92, 'Temperatura: storico R09…');
+            if (temp == null) unavailable.push('temperatura');
 
             setProgress(100, 'Completato');
             if (unavailable.length) {
-                setRingStatus(`Sincronizzazione completata. Il firmware non ha restituito: ${unavailable.join(', ')}. Gli altri dati sono stati salvati nella schermata.`, 'warning');
+                setRingStatus(`Sincronizzazione completata. Nessun dato disponibile per: ${unavailable.join(', ')}. Gli altri dati sono stati salvati nella schermata.`, 'warning');
             } else {
                 setRingStatus('Sincronizzazione completa riuscita.', 'success');
             }
@@ -735,8 +917,9 @@
         if (!cfg) return;
         setBusyUi(true);
         try {
-            const value = await measureSensor(key, false);
-            if (value == null) setRingStatus(`${cfg.label}: nessun valore valido ricevuto. Il tuo firmware potrebbe non supportare questa misura.`, 'warning');
+            if (!syncAllRunning) setRingStatus(`${cfg.label}: cerco il dato più affidabile disponibile (storico o misura diretta)…`, 'info');
+            const value = await getMetricBestEffort(key);
+            if (value == null) setRingStatus(`${cfg.label}: nessun dato disponibile ancora. Indossa l’anello per un po’ e riprova.`, 'warning');
             else setRingStatus(`${cfg.label}: ${key === 'temperature' ? value.toFixed(1) : value}${cfg.unit ? ' ' + cfg.unit : ''}.`, 'success');
         } catch (e) {
             setRingStatus(`Errore ${cfg.label}: ${e.message || e}`, 'error');
@@ -816,7 +999,8 @@
     function clearPending(reason = 'Disconnesso') {
         if (batteryWaiter) { clearTimeout(batteryWaiter.timer); batteryWaiter.reject(new Error(reason)); batteryWaiter = null; }
         if (stepsState) { clearTimeout(stepsState.timer); stepsState.reject(new Error(reason)); stepsState = null; }
-        if (sleepState) { clearTimeout(sleepState.timer); sleepState.reject(new Error(reason)); sleepState = null; }
+        if (bigState) finishBigState(null, new Error(reason));
+        if (historyState) finishHistoryState(null, new Error(reason));
         if (measureState) {
             const s = measureState; measureState = null;
             clearTimeout(s.fallbackTimer); clearTimeout(s.timeoutTimer); clearTimeout(s.settleTimer);
