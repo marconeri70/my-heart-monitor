@@ -1,5 +1,5 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v9)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v10)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
@@ -1246,19 +1246,24 @@
         metricText('ringGestureTraining', 'Pronto');
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '⏹️ Ferma gesti';
 
-        // A1 04 03 = accelerometer-only on documented COLMI RF03/R02-family firmware.
-        // It streams the same A1 03 XYZ packets without enabling the optical PPG/SpO2 LEDs.
-        const sensorMode = gestureActiveMode === 'accel' ? 0x03 : 0x04;
+        // Firmware families differ in how they select the raw sensor subset.
+        // On the user's RT09, A1 04 03 still turns on the optical LEDs, so for
+        // the LED-off test we use the alternate documented selector:
+        //   A1 01 02 = start stream, accelerometer only.
+        // Compatibility keeps the previously proven all-sensors raw mode A1 04 04.
         const beforeStart = lastRawNotificationAt;
-        await writePrimary(makePacket(CMD_RAW, [0x04, sensorMode]));
+        if (gestureActiveMode === 'accel') {
+            await writePrimary(makePacket(CMD_RAW, [0x01, 0x02]));
+        } else {
+            await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
+        }
         metricText('ringGesture', gestureProfiles.length ? 'In ascolto…' : 'In ascolto / da programmare');
 
         if (gestureActiveMode === 'accel') {
-            if (!quiet) setRingStatus('Accelerometro LED spenti attivo. Muovi la mano: il contatore Campioni deve aumentare senza accendere i LED ottici.', 'success');
-            // Give the firmware a moment and warn if this revision does not implement A1 04 03.
+            if (!quiet) setRingStatus('Profilo RT09 accelerometro-only attivo (A1 01 02). Muovi la mano: i Campioni devono aumentare e i LED dovrebbero restare spenti.', 'success');
             setTimeout(() => {
                 if (gestureMode && gestureActiveMode === 'accel' && lastRawNotificationAt <= beforeStart) {
-                    setRingStatus('Nessun campione ricevuto in modalità LED spenti. Questa revisione potrebbe non supportare A1 04 03: prova “Compatibilità · LED accesi”.', 'warning');
+                    setRingStatus('Nessun campione ricevuto con A1 01 02. Ferma i gesti e usa “Compatibilità · LED accesi”; questa revisione non espone un flusso accelerometro-only con questo profilo.', 'warning');
                 }
             }, 2600);
         } else if (!quiet) {

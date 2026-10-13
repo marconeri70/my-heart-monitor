@@ -370,7 +370,7 @@
                 <div class="gesture-field">
                     <label>Modalità</label>
                     <select id="ringGestureMode" onchange="ringGestureModeChanged()">
-                        <option value="accel">Accelerometro · LED spenti (consigliato)</option>
+                        <option value="accel">RT09 · Accelerometro solo (test LED spenti)</option>
                         <option value="motion">Compatibilità · LED accesi</option>
                     </select>
                 </div>
@@ -430,11 +430,11 @@
 
             <div id="ringGestureProfiles"></div>
             <button class="gesture-clear" onclick="ringClearGestures()">Elimina tutti i gesti</button>
-            <div class="ring-note" style="margin-top:5px;"><b>Accelerometro · LED spenti:</b> usa il flusso X/Y/Z con il comando accelerometro-only <code>A1 04 03</code>, così i gesti possono essere riconosciuti senza attivare i LED ottici. <b>Compatibilità · LED accesi:</b> usa <code>A1 04 04</code> se il tuo firmware non restituisce campioni nella modalità LED spenti. Registra ogni gesto dopo aver premuto <b>Registra gesto</b>.</div>
+            <div class="ring-note" style="margin-top:5px;"><b>RT09 · Accelerometro solo:</b> usa il profilo alternativo <code>A1 01 02</code>, documentato come “accelerometro only” su firmware della stessa famiglia. Prima spegne tutti i flussi ottici e poi avvia solo X/Y/Z. <b>Compatibilità · LED accesi:</b> usa <code>A1 04 04</code> se il profilo RT09 non restituisce campioni. Registra ogni gesto dopo aver premuto <b>Registra gesto</b>.</div>
         </div>
 
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
-        <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; la modalità LED spenti è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
+        <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
     </div>
 
     <div class="card">

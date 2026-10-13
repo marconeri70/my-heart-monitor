@@ -68,3 +68,7 @@ Per testare: chiudere QRing, collegare R09_D502, premere **Attiva gesti**, poi *
 - La vecchia modalità nativa/HID è stata rimossa perché non produceva eventi nella PWA sul telefono testato.
 - Nuova modalità consigliata: `A1 04 03` accelerometro-only, con pacchetti `A1 03` X/Y/Z e LED ottici spenti sui firmware compatibili.
 - Modalità compatibilità: `A1 04 04`, che può accendere i LED.
+
+
+## v10 — Profilo RT09 accelerometro-only
+Sul firmware RT09 testato, `A1 04 03` continuava ad accendere i LED ottici. La modalità LED-off ora usa il profilo alternativo `A1 01 02`, documentato su firmware della stessa famiglia come start streaming con modalità accelerometro-only. Prima dell'avvio l'app invia gli STOP ai flussi raw e realtime. La modalità compatibilità `A1 04 04` resta disponibile.
