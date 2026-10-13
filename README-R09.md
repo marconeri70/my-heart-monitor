@@ -1,37 +1,39 @@
-# Heart Monitor + COLMI R09
+# Heart Monitor Ultra + COLMI R09 — v3 All-in-One
 
-Questa versione aggiunge il collegamento Bluetooth diretto al COLMI R09 (es. `R09_D502`) dalla PWA.
+Questa versione collega direttamente la PWA al COLMI R09 via Web Bluetooth e aggiunge un flusso unico **Sincronizza tutto**.
 
-## Funzioni incluse in questa prima versione
+## Dati integrati
 
-- ricerca/selezione dell'anello con Web Bluetooth;
-- connessione al servizio BLE COLMI;
-- lettura batteria e stato di carica;
-- avvio/arresto della misurazione del battito;
-- visualizzazione BPM in tempo reale;
-- copia automatica del BPM nel campo `Battiti al minuto` già presente nell'app;
-- disconnessione e gestione della perdita di collegamento.
+- batteria e stato di carica;
+- hardware/firmware quando il servizio Device Information è disponibile;
+- battito cardiaco (hardware verificato sul R09_D502);
+- SpO₂;
+- passi di oggi, calorie e distanza dai blocchi attività COLMI;
+- riepilogo sonno: totale, profondo, leggero, REM e sveglio, se il firmware espone il servizio Big Data;
+- temperatura, stress e HRV come funzioni sperimentali dipendenti dal firmware;
+- accelerometro grezzo e semplici indicazioni di movimento/gesto sperimentali.
 
-## Come provarla su Android
+## Uso rapido
 
-1. Pubblica i file via HTTPS (GitHub Pages va bene).
-2. Apri la pagina con Chrome/Chromium su Android oppure dalla PWA installata.
-3. Chiudi QRing, perché può mantenere occupata la connessione BLE del ring.
-4. Premi **Cerca e collega anello**.
-5. Seleziona `R09_D502`.
-6. Controlla la batteria e premi **Avvia battito**.
-7. Tieni l'anello aderente e il dito fermo per 10-30 secondi.
+1. Chiudi QRing, perché può occupare la connessione BLE dell'anello.
+2. Apri la PWA con Chrome/Chromium Android su HTTPS.
+3. Premi **Cerca e collega anello** e scegli `R09_D502`.
+4. Premi **Sincronizza tutto** e lascia l'anello al dito. L'app esegue automaticamente letture e misure in sequenza.
 
-La sessione battito si interrompe automaticamente dopo 60 secondi per limitare il consumo della batteria.
+Le singole funzioni restano disponibili come pulsanti per ripetere solo una misura.
 
-## Protocollo usato
+## Canali BLE
 
-- Service: `6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E`
-- Write: `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
-- Notify: `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
-- Battery: command `0x03`
-- Manual measurement: command `0x69`, HR subtype `0x01`
-- Stop measurement: command `0x6A`
-- Computed HR poll fallback: command `0x1E`
+Primary UART-style:
+- Service `6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E`
+- Write `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+- Notify `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
 
-I dati del ring sono destinati al monitoraggio personale e non costituiscono misurazioni cliniche.
+Big Data (sonno):
+- Service `DE5BF728-D711-4E47-AF26-65E3012A5DC7`
+- Write `DE5BF72A-D711-4E47-AF26-65E3012A5DC7`
+- Notify `DE5BF729-D711-4E47-AF26-65E3012A5DC7`
+
+## Nota importante
+
+I valori dell'anello sono dati wellness e non misure cliniche. La pressione arteriosa e la glicemia “stimate” dall'anello non sono importate nella app perché non sono considerate misurazioni affidabili. La pressione resta inserita manualmente da uno strumento dedicato.

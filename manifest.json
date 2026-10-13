@@ -1,7 +1,7 @@
 {
-  "name": "Heart Monitor Ultra",
+  "name": "Heart Monitor Ultra + COLMI",
   "short_name": "HeartApp",
-  "description": "Monitor pressione e integrazione Bluetooth COLMI R09",
+  "description": "Pressione, battito, SpO2, attività, sonno e sensori COLMI R09 via Bluetooth",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v2-colmi-r09';
+const CACHE_NAME = 'heart-monitor-v3-colmi-r09-all';
 const APP_SHELL = [
     './',
     './index.html',

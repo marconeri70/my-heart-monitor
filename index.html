@@ -126,23 +126,41 @@
         .btn-secondary:hover { box-shadow: 0 15px 25px rgba(0, 122, 255, 0.4); }
 
 
-        /* COLMI R09 */
+        /* COLMI R09 — dashboard completo */
         .ring-badge { padding: 7px 11px; border-radius: 999px; background: rgba(142,142,147,.12); color: var(--text-light); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .7px; white-space: nowrap; }
         .ring-badge.connected { background: rgba(52,199,89,.12); color: var(--success); }
-        .ring-metrics { display: grid; grid-template-columns: 1.3fr .8fr .9fr; gap: 8px; margin: 16px 0; }
-        .ring-metric { background: rgba(255,255,255,.75); border: 1px solid rgba(0,0,0,.04); border-radius: 16px; padding: 12px 8px; text-align: center; min-width: 0; }
-        .ring-metric span { display: block; color: var(--text-light); font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
-        .ring-metric strong { display: block; font-size: 16px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ring-status { min-height: 20px; padding: 10px 12px; margin: 10px 0 4px; border-radius: 12px; font-size: 13px; line-height: 1.35; font-weight: 800; background: rgba(0,122,255,.07); color: var(--secondary); }
-        .ring-status.success { background: rgba(52,199,89,.09); color: #248A3D; }
-        .ring-status.warning { background: rgba(255,149,0,.10); color: #B86E00; }
-        .ring-status.error { background: rgba(255,59,48,.09); color: #D70015; }
-        .ring-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .ring-actions button { margin: 8px 0; padding: 15px 10px; font-size: 13px; letter-spacing: .4px; }
-        .ring-actions button:disabled { opacity: .45; transform: none; cursor: not-allowed; box-shadow: none; }
-        .ring-disconnect { background: rgba(255,59,48,.08); color: #D70015; box-shadow: none; margin-top: 4px; }
-        .ring-disconnect:hover { background: rgba(255,59,48,.13); box-shadow: none; }
-        .ring-note { color: var(--text-light); font-size: 12px; line-height: 1.45; font-weight: 700; margin: 10px 2px 0; }
+        .ring-device-line { display:flex; justify-content:space-between; gap:10px; align-items:center; margin:12px 0 4px; padding:10px 12px; background:rgba(255,255,255,.62); border-radius:14px; font-size:12px; font-weight:800; color:var(--text-light); }
+        .ring-device-line strong { color:var(--text-dark); font-size:13px; }
+        .ring-metrics { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; margin:14px 0; }
+        .ring-metric { background:rgba(255,255,255,.78); border:1px solid rgba(0,0,0,.04); border-radius:16px; padding:12px 6px; text-align:center; min-width:0; }
+        .ring-metric span { display:block; color:var(--text-light); font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.55px; margin-bottom:5px; }
+        .ring-metric strong { display:block; font-size:15px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ring-metric.experimental { background:rgba(255,149,0,.055); }
+        .ring-section-title { margin:14px 2px 7px; font-size:11px; font-weight:900; letter-spacing:.9px; text-transform:uppercase; color:var(--text-light); }
+        .ring-sleep-detail { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:7px 0 12px; }
+        .ring-sleep-chip { background:rgba(88,86,214,.07); border-radius:12px; padding:8px 4px; text-align:center; }
+        .ring-sleep-chip span { display:block; font-size:8px; text-transform:uppercase; color:var(--text-light); font-weight:900; }
+        .ring-sleep-chip strong { display:block; font-size:11px; margin-top:3px; }
+        .ring-status { min-height:20px; padding:10px 12px; margin:10px 0 4px; border-radius:12px; font-size:13px; line-height:1.35; font-weight:800; background:rgba(0,122,255,.07); color:var(--secondary); }
+        .ring-status.success { background:rgba(52,199,89,.09); color:#248A3D; }
+        .ring-status.warning { background:rgba(255,149,0,.10); color:#B86E00; }
+        .ring-status.error { background:rgba(255,59,48,.09); color:#D70015; }
+        .ring-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+        .ring-actions button { margin:5px 0; padding:13px 8px; font-size:11px; letter-spacing:.2px; }
+        .ring-actions button:disabled, #ringSyncAllBtn:disabled { opacity:.45; transform:none; cursor:not-allowed; box-shadow:none; }
+        .ring-sync-all { background:linear-gradient(135deg,#6A5AE0,#007AFF); box-shadow:0 10px 20px rgba(72,87,255,.25); margin:10px 0 5px; }
+        .ring-progress { display:none; margin:8px 0; }
+        .ring-progress-track { height:9px; border-radius:999px; overflow:hidden; background:rgba(0,0,0,.06); }
+        .ring-progress-bar { height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#34C759,#007AFF); transition:width .35s ease; }
+        .ring-progress-text { margin-top:5px; text-align:center; font-size:10px; color:var(--text-light); font-weight:800; }
+        .ring-gesture-box { margin-top:10px; padding:10px; border-radius:14px; background:rgba(0,122,255,.045); }
+        .ring-axis { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:7px; }
+        .ring-axis div { text-align:center; background:white; border-radius:10px; padding:7px 4px; font-size:10px; font-weight:800; }
+        .ring-axis strong { display:block; font-size:12px; margin-top:2px; }
+        .ring-disconnect { background:rgba(255,59,48,.08); color:#D70015; box-shadow:none; margin-top:8px; }
+        .ring-disconnect:hover { background:rgba(255,59,48,.13); box-shadow:none; }
+        .ring-note { color:var(--text-light); font-size:11px; line-height:1.45; font-weight:700; margin:10px 2px 0; }
+        @media (max-width:380px) { .ring-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
         h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
         #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
         
@@ -246,21 +264,75 @@
             <h2>💍 COLMI Smart Ring</h2>
             <span id="ringConnectionBadge" class="ring-badge">Non connesso</span>
         </div>
-        <p style="font-size: 14px; color: var(--text-light); margin: 10px 0 0; font-weight: 700;">Collegamento Bluetooth diretto al tuo R09. Il battito rilevato viene copiato automaticamente nel campo BPM della misurazione.</p>
+        <p style="font-size: 13px; color: var(--text-light); margin: 10px 0 0; font-weight: 700;">Dashboard completa del tuo R09. Con <b>Sincronizza tutto</b> l'app prova automaticamente attività, sonno e sensori senza farti fare una misura alla volta.</p>
+
+        <div class="ring-device-line">
+            <span>Dispositivo <strong id="ringName">R09_D502</strong></span>
+            <span id="ringDeviceInfo">--</span>
+        </div>
+
+        <div class="ring-section-title">Salute e stato</div>
         <div class="ring-metrics">
-            <div class="ring-metric"><span>Dispositivo</span><strong id="ringName">R09_D502</strong></div>
             <div class="ring-metric"><span>Batteria</span><strong id="ringBattery">--</strong></div>
             <div class="ring-metric"><span>Battito</span><strong id="ringBpm">--</strong></div>
+            <div class="ring-metric"><span>SpO₂</span><strong id="ringSpo2">--</strong></div>
+            <div class="ring-metric experimental"><span>Temperatura*</span><strong id="ringTemp">--</strong></div>
+            <div class="ring-metric experimental"><span>Stress*</span><strong id="ringStress">--</strong></div>
+            <div class="ring-metric experimental"><span>HRV*</span><strong id="ringHrv">--</strong></div>
         </div>
-        <div style="font-size:11px; color:var(--text-light); text-align:right; font-weight:700; margin-top:-8px;">Ultimo dato: <span id="ringLastUpdate">--</span></div>
+
+        <div class="ring-section-title">Attività di oggi</div>
+        <div class="ring-metrics">
+            <div class="ring-metric"><span>Passi</span><strong id="ringSteps">--</strong></div>
+            <div class="ring-metric"><span>Calorie</span><strong id="ringCalories">--</strong></div>
+            <div class="ring-metric"><span>Distanza</span><strong id="ringDistance">--</strong></div>
+        </div>
+
+        <div class="ring-section-title">Sonno</div>
+        <div class="ring-metrics" style="grid-template-columns:1fr; margin-bottom:7px;">
+            <div class="ring-metric"><span>Totale ultima notte</span><strong id="ringSleep">--</strong></div>
+        </div>
+        <div class="ring-sleep-detail">
+            <div class="ring-sleep-chip"><span>Profondo</span><strong id="ringSleepDeep">--</strong></div>
+            <div class="ring-sleep-chip"><span>Leggero</span><strong id="ringSleepLight">--</strong></div>
+            <div class="ring-sleep-chip"><span>REM</span><strong id="ringSleepRem">--</strong></div>
+            <div class="ring-sleep-chip"><span>Sveglio</span><strong id="ringSleepAwake">--</strong></div>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-light); text-align:right; font-weight:700;">Ultimo dato: <span id="ringLastUpdate">--</span></div>
         <div id="ringStatus" class="ring-status">Pronto.</div>
-        <button id="ringConnectBtn" class="btn-secondary" onclick="ringConnect()">🔎 Cerca e collega anello</button>
-        <div class="ring-actions">
-            <button id="ringBatteryBtn" class="btn-secondary" onclick="ringReadBattery()" disabled>🔋 Batteria</button>
-            <button id="ringHrBtn" onclick="ringToggleHeartRate()" disabled>❤️ Avvia battito</button>
+        <div id="ringProgress" class="ring-progress">
+            <div class="ring-progress-track"><div id="ringProgressBar" class="ring-progress-bar"></div></div>
+            <div id="ringProgressText" class="ring-progress-text"></div>
         </div>
+
+        <button id="ringConnectBtn" class="btn-secondary" onclick="ringConnect()">🔎 Cerca e collega anello</button>
+        <button id="ringSyncAllBtn" data-ring-action class="ring-sync-all" onclick="ringSyncAll()" disabled>✨ Sincronizza tutto</button>
+
+        <div class="ring-actions">
+            <button data-ring-action class="btn-secondary" onclick="ringSyncActivitySleep()" disabled>🚶 Attività + sonno</button>
+            <button data-ring-action class="btn-secondary" onclick="ringReadBattery()" disabled>🔋 Batteria</button>
+            <button data-ring-measure data-ring-action onclick="ringMeasureMetric('hr')" disabled>❤️ Battito</button>
+            <button data-ring-measure data-ring-action onclick="ringMeasureMetric('spo2')" disabled>🫁 SpO₂</button>
+            <button data-ring-measure data-ring-action onclick="ringMeasureMetric('temperature')" disabled>🌡️ Temperatura*</button>
+            <button data-ring-measure data-ring-action onclick="ringMeasureMetric('stress')" disabled>🧠 Stress*</button>
+            <button data-ring-measure data-ring-action onclick="ringMeasureMetric('hrv')" disabled>💓 HRV*</button>
+            <button id="ringGestureBtn" data-ring-action class="btn-secondary" onclick="ringToggleGestures()" disabled>🖐️ Gesti / movimento</button>
+        </div>
+
+        <div class="ring-gesture-box">
+            <div style="display:flex; justify-content:space-between; gap:8px; font-size:11px; font-weight:900; color:var(--text-light);">
+                <span>GESTO SPERIMENTALE</span><strong id="ringGesture" style="color:var(--text-dark);">--</strong>
+            </div>
+            <div class="ring-axis">
+                <div>X (G)<strong id="ringAccelX">--</strong></div>
+                <div>Y (G)<strong id="ringAccelY">--</strong></div>
+                <div>Z (G)<strong id="ringAccelZ">--</strong></div>
+            </div>
+        </div>
+
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
-        <p class="ring-note">Per il test chiudi QRing prima di collegarti. Web Bluetooth richiede Android Chrome/Chromium e una pagina HTTPS. I valori dell’anello non sostituiscono misurazioni mediche.</p>
+        <p class="ring-note">* Temperatura, stress, HRV e riconoscimento dei movimenti dipendono dal firmware e sono sperimentali. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
     </div>
 
     <div class="card">
