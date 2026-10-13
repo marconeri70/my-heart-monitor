@@ -348,6 +348,7 @@
             <button data-ring-measure data-ring-action onclick="ringMeasureMetric('stress')" disabled>🧠 Stress*</button>
             <button data-ring-measure data-ring-action onclick="ringMeasureMetric('hrv')" disabled>💓 HRV*</button>
             <button id="ringGestureBtn" data-ring-action class="btn-secondary" onclick="ringToggleGestures()" disabled>🖐️ Attiva gesti</button>
+            <button id="ringQuietBtn" data-ring-action class="btn-secondary" onclick="ringQuietSensors()" disabled>🛑 Spegni sensori</button>
         </div>
 
         <div class="ring-gesture-box">
@@ -412,7 +413,7 @@
 
             <div id="ringGestureProfiles"></div>
             <button class="gesture-clear" onclick="ringClearGestures()">Elimina tutti i gesti</button>
-            <div class="ring-note" style="margin-top:5px;">Per programmare un gesto: scegli nome e azione, premi <b>Registra gesto</b>, attendi il conto alla rovescia e fai il movimento una volta. L'app lo riconosce in locale dal movimento dell'anello. La modalità gesti consuma più batteria.</div>
+            <div class="ring-note" style="margin-top:5px;">Per programmare un gesto: scegli nome e azione, premi <b>Registra gesto</b>, attendi il conto alla rovescia e fai il movimento una volta. L'app lo riconosce in locale dal movimento dell'anello. La modalità gesti consuma più batteria. Quando premi <b>Ferma gesti</b>, l’app invia anche i comandi per spegnere i flussi ottici. Se un firmware non risponde correttamente, usa <b>🛑 Spegni sensori</b>.</div>
         </div>
 
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>

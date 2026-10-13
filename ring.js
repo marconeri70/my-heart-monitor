@@ -1,5 +1,5 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v5)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v6)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
@@ -74,6 +74,7 @@
     let gestureVibrate = true;
     let gestureActionBusy = false;
     let gestureAudioCtx = null;
+    let lastRawNotificationAt = 0;
     const GESTURE_PROFILES_KEY = 'heart_ring_gesture_profiles_v5';
     const GESTURE_SETTINGS_KEY = 'heart_ring_gesture_settings_v5';
 
@@ -1065,6 +1066,7 @@
 
         // 0xA1 has its high bit set but is a legitimate raw-data command, not an error frame.
         if (command === CMD_RAW) {
+            lastRawNotificationAt = Date.now();
             const acc = parseAccelerometer(bytes);
             if (acc && gestureMode) handleGesture(acc);
             return;
@@ -1119,9 +1121,44 @@
         });
     }
 
+    async function quietSensors({ includeRaw = true, verifyRaw = true } = {}) {
+        if (!ringDevice?.gatt?.connected) return { rawStopped: true };
+
+        // Raw-motion stop differs across some COLMI firmwares. Most use A1 02,
+        // while newer variants have been observed using A1 05. Try the stock
+        // command first and only fall back to A1 05 if raw packets keep arriving.
+        let rawStopped = true;
+        if (includeRaw) {
+            const beforeStop = Date.now();
+            try { await writePrimary(makePacket(CMD_RAW, [0x02])); } catch (_) {}
+            if (verifyRaw) {
+                await delay(550);
+                rawStopped = lastRawNotificationAt < beforeStop;
+                if (!rawStopped) {
+                    try { await writePrimary(makePacket(CMD_RAW, [0x05])); } catch (_) {}
+                    const beforeFallback = Date.now();
+                    await delay(550);
+                    rawStopped = lastRawNotificationAt < beforeFallback;
+                }
+            }
+        }
+
+        // A raw/gesture session may coexist with a leftover optical measurement.
+        // Explicitly stop the known realtime kinds without disabling background logs.
+        const realtimeKinds = [0x01, 0x03, 0x04, 0x05, 0x06, 0x08, 0x0a, 0x0b];
+        for (const kind of realtimeKinds) {
+            try { await writePrimary(makePacket(CMD_MANUAL_MEASUREMENT, [kind, 0x04])); } catch (_) {}
+            try { await writePrimary(makePacket(CMD_STOP_MEASUREMENT, [kind, 0x00, 0x00])); } catch (_) {}
+            await delay(18);
+        }
+        return { rawStopped };
+    }
+
     async function startGestures(quiet = false) {
         if (!ringDevice?.gatt?.connected) throw new Error('Anello non connesso');
         if (measureState) await stopCurrentMeasurement(true);
+        // Clear any stale optical stream before enabling motion streaming.
+        await quietSensors({ includeRaw: true, verifyRaw: false });
         await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
         gestureMode = true;
         gestureSampleCount = 0;
@@ -1134,9 +1171,7 @@
     }
 
     async function stopGestures(quiet = false) {
-        if (ringDevice?.gatt?.connected) {
-            try { await writePrimary(makePacket(CMD_RAW, [0x02])); } catch (_) {}
-        }
+        // Set the UI state first so incoming trailing packets are ignored immediately.
         gestureMode = false;
         lastAccel = null;
         gestureTraining = null;
@@ -1144,7 +1179,17 @@
         gestureLiveCapture = null;
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '🖐️ Attiva gesti';
         metricText('ringGestureTraining', 'Fermo');
-        if (!quiet) setRingStatus('Modalità gesti fermata.', 'info');
+        metricText('ringGesture', 'Fermo');
+        metricText('ringAccelX', '--'); metricText('ringAccelY', '--'); metricText('ringAccelZ', '--');
+
+        let result = { rawStopped: true };
+        if (ringDevice?.gatt?.connected) {
+            try { result = await quietSensors({ includeRaw: true, verifyRaw: true }); } catch (_) {}
+        }
+        if (!quiet) {
+            if (result.rawStopped) setRingStatus('Modalità gesti fermata e sensori in tempo reale spenti.', 'success');
+            else setRingStatus('Gesti fermati. Il flusso movimento sembra ancora attivo: usa “Spegni sensori” o disconnetti/ricollega l’anello.', 'warning');
+        }
     }
 
     async function readDeviceInfo() {
@@ -1269,6 +1314,23 @@
         } catch (e) { setRingStatus(`Gesti non disponibili su questo firmware: ${e.message || e}`, 'warning'); }
     };
 
+    window.ringQuietSensors = async function ringQuietSensors() {
+        if (!ringDevice?.gatt?.connected) { setRingStatus('Collega prima l’anello.', 'warning'); return; }
+        setBusyUi(true);
+        try {
+            gestureMode = false;
+            if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '🖐️ Attiva gesti';
+            metricText('ringGestureTraining', 'Fermo');
+            metricText('ringGesture', 'Fermo');
+            metricText('ringAccelX', '--'); metricText('ringAccelY', '--'); metricText('ringAccelZ', '--');
+            await stopCurrentMeasurement(true);
+            const result = await quietSensors({ includeRaw: true, verifyRaw: true });
+            setRingStatus(result.rawStopped ? 'Sensori in tempo reale spenti.' : 'Comandi di arresto inviati; se i LED restano accesi, disconnetti e ricollega una volta.', result.rawStopped ? 'success' : 'warning');
+        } catch (e) {
+            setRingStatus(`Arresto sensori non completato: ${e.message || e}`, 'warning');
+        } finally { setBusyUi(false); }
+    };
+
     window.ringRecordGesture = async function ringRecordGesture(replaceId = null) {
         try { await recordGestureProfile(replaceId); }
         catch (e) { setRingStatus(`Registrazione gesto: ${e.message || e}`, 'warning'); metricText('ringGestureTraining', 'Riprova'); }
@@ -1382,6 +1444,7 @@
     window.ringDisconnect = async function ringDisconnect() {
         try { if (gestureMode) await stopGestures(true); } catch (_) {}
         try { await stopCurrentMeasurement(true); } catch (_) {}
+        try { await quietSensors({ includeRaw: true, verifyRaw: false }); } catch (_) {}
         if (primaryNotify) {
             try { primaryNotify.removeEventListener('characteristicvaluechanged', onPrimaryNotification); } catch (_) {}
             try { await primaryNotify.stopNotifications(); } catch (_) {}

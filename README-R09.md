@@ -53,3 +53,12 @@ Questa versione aggiunge una sezione per programmare gesti personalizzati usando
 I profili sono salvati localmente nel browser. La soglia di riconoscimento e l'avvio automatico dopo la connessione sono configurabili. La modalità gesti usa il flusso accelerometro sperimentale del ring e può aumentare il consumo della batteria.
 
 Per testare: chiudere QRing, collegare R09_D502, premere **Attiva gesti**, poi **Registra gesto**. Dopo il conto alla rovescia eseguire il movimento una volta. Ripeterlo per verificare riconoscimento e azione.
+
+
+## v6 - Arresto sensori robusto
+
+- `Ferma gesti` invia prima `A1 02` e verifica se i pacchetti raw cessano.
+- Se il flusso continua, prova automaticamente il fallback `A1 05`, osservato su alcune revisioni COLMI più recenti.
+- Vengono inoltre inviati i comandi STOP ai principali flussi realtime per evitare LED ottici rimasti attivi da misure precedenti.
+- Aggiunto il pulsante **Spegni sensori** per forzare manualmente l'arresto senza disconnettere l'anello.
+- Gli assi X/Y/Z vengono azzerati a schermo quando la modalità gesti viene fermata.
