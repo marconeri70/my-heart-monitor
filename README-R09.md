@@ -62,3 +62,9 @@ Per testare: chiudere QRing, collegare R09_D502, premere **Attiva gesti**, poi *
 - Vengono inoltre inviati i comandi STOP ai principali flussi realtime per evitare LED ottici rimasti attivi da misure precedenti.
 - Aggiunto il pulsante **Spegni sensori** per forzare manualmente l'arresto senza disconnettere l'anello.
 - Gli assi X/Y/Z vengono azzerati a schermo quando la modalità gesti viene fermata.
+
+
+## v9 — Gesti con LED spenti
+- La vecchia modalità nativa/HID è stata rimossa perché non produceva eventi nella PWA sul telefono testato.
+- Nuova modalità consigliata: `A1 04 03` accelerometro-only, con pacchetti `A1 03` X/Y/Z e LED ottici spenti sui firmware compatibili.
+- Modalità compatibilità: `A1 04 04`, che può accendere i LED.

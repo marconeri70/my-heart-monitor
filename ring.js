@@ -1,5 +1,5 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v7)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v9)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
@@ -72,7 +72,7 @@
     let gestureConfidenceThreshold = 65;
     let gestureAutoStart = false;
     let gestureVibrate = true;
-    let gestureInputMode = 'motion';
+    let gestureInputMode = 'accel';
     let gestureActiveMode = null;
     let nativeGestureTraining = null;
     let gestureActionBusy = false;
@@ -739,14 +739,15 @@
     function loadGestureSettings() {
         try {
             const parsed = JSON.parse(localStorage.getItem(GESTURE_PROFILES_KEY) || '[]');
-            if (Array.isArray(parsed)) gestureProfiles = parsed.filter(g => g && g.id && ((g.mode === 'native' && g.nativeKey) || Array.isArray(g.template)));
+            if (Array.isArray(parsed)) gestureProfiles = parsed.filter(g => g && g.id && Array.isArray(g.template));
         } catch (_) { gestureProfiles = []; }
         try {
             const settings = JSON.parse(localStorage.getItem(GESTURE_SETTINGS_KEY) || '{}');
             if (Number.isFinite(Number(settings.threshold))) gestureConfidenceThreshold = Math.max(45, Math.min(90, Number(settings.threshold)));
             gestureAutoStart = !!settings.autoStart;
             gestureVibrate = settings.vibrate !== false;
-            if (settings.inputMode === 'native' || settings.inputMode === 'motion') gestureInputMode = settings.inputMode;
+            if (settings.inputMode === 'native') gestureInputMode = 'accel';
+            else if (settings.inputMode === 'accel' || settings.inputMode === 'motion') gestureInputMode = settings.inputMode;
         } catch (_) {}
         const threshold = el('ringGestureSensitivity');
         if (threshold) threshold.value = String(gestureConfidenceThreshold);
@@ -828,7 +829,7 @@
             top.className = 'gesture-profile-top';
             const label = document.createElement('div');
             label.className = 'gesture-profile-name';
-            label.textContent = `${profile.name}${profile.mode === 'native' ? ' · nativo' : ''}`;
+            label.textContent = `${profile.name}${profile.mode === 'accel' ? ' · LED spenti' : ''}`;
             const enabled = document.createElement('input');
             enabled.type = 'checkbox'; enabled.checked = profile.enabled !== false;
             enabled.title = 'Abilita/disabilita gesto';
@@ -862,8 +863,8 @@
                 setGestureNameUi(profile.name);
                 if (a) a.value = profile.action;
                 if (u) u.value = profile.url || '';
-                if (mode) mode.value = profile.mode === 'native' ? 'native' : 'motion';
-                gestureInputMode = profile.mode === 'native' ? 'native' : 'motion';
+                if (mode) mode.value = profile.mode === 'accel' ? 'accel' : 'motion';
+                gestureInputMode = profile.mode === 'accel' ? 'accel' : 'motion';
                 window.ringGestureActionChanged();
                 window.ringRecordGesture(profile.id);
             });
@@ -969,7 +970,7 @@
         if (!seq || !gestureProfiles.length) return;
         let best = null;
         for (const profile of gestureProfiles) {
-            if (profile.enabled === false || profile.mode === 'native' || !Array.isArray(profile.template)) continue;
+            if (profile.enabled === false || !Array.isArray(profile.template)) continue;
             const dist = gestureDistance(profile.template, seq);
             // Empirical score: identical trajectory ≈100; ~0.2 RMS difference ≈67.
             const confidence = Math.max(0, Math.min(100, Math.round(100 * Math.exp(-2.0 * dist))));
@@ -987,7 +988,7 @@
 
     function maybeStartLiveGesture(acc, previous) {
         if (!gestureMode || gestureTraining || gestureLiveCapture || Date.now() - lastGestureAt < 1500) return;
-        const enabledProfiles = gestureProfiles.filter(g => g.enabled !== false && g.mode !== 'native' && Array.isArray(g.template));
+        const enabledProfiles = gestureProfiles.filter(g => g.enabled !== false && Array.isArray(g.template));
         if (!enabledProfiles.length || !previous) return;
         const dx = acc.gX - previous.gX, dy = acc.gY - previous.gY, dz = acc.gZ - previous.gZ;
         const impulse = Math.hypot(dx, dy, dz);
@@ -1004,7 +1005,7 @@
         const action = el('ringGestureAction')?.value || 'vibrate';
         let url = (el('ringGestureUrl')?.value || '').trim();
         if (action === 'open-url' && !/^https:\/\//i.test(url)) throw new Error('Per “Apri link” inserisci un indirizzo https:// valido');
-        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        gestureInputMode = el('ringGestureMode')?.value === 'motion' ? 'motion' : 'accel';
         if (!gestureMode || gestureActiveMode !== gestureInputMode) {
             if (gestureMode) await stopGestures(true);
             await startGestures(true);
@@ -1012,21 +1013,6 @@
 
         const btn = el('ringGestureRecordBtn');
         if (btn) btn.disabled = true;
-
-        if (gestureInputMode === 'native') {
-            if (nativeGestureTraining?.timer) clearTimeout(nativeGestureTraining.timer);
-            metricText('ringGestureTraining', 'FAI IL GESTO');
-            metricText('ringGestureConfidence', '--');
-            setRingStatus(`Registrazione nativa “${name}”: esegui ora il gesto dell’anello.`, 'info');
-            nativeGestureTraining = { name, action, url, replaceId, timer: null };
-            nativeGestureTraining.timer = setTimeout(() => {
-                nativeGestureTraining = null;
-                if (btn) btn.disabled = false;
-                metricText('ringGestureTraining', 'Nessun comando');
-                setRingStatus('Nessun comando nativo ricevuto. Se serve, abilita “Controllo gestuale” in QRing una volta e poi torna qui.', 'warning');
-            }, 12000);
-            return;
-        }
 
         metricText('ringGestureTraining', 'Preparati…');
         setRingStatus(`Registrazione gesto “${name}”: preparati.`, 'info');
@@ -1048,7 +1034,7 @@
             const template = resampleGesture(training.samples);
             if (!template) throw new Error('Movimento non rilevato abbastanza bene. Riprova con un gesto più deciso.');
             const id = replaceId || `${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`;
-            const profile = { id, name, action, url, mode: 'motion', template, enabled: true, createdAt: new Date().toISOString() };
+            const profile = { id, name, action, url, mode: gestureInputMode, template, enabled: true, createdAt: new Date().toISOString() };
             const idx = gestureProfiles.findIndex(g => g.id === id);
             if (idx >= 0) gestureProfiles[idx] = profile; else gestureProfiles.push(profile);
             saveGestureSettings();
@@ -1213,7 +1199,6 @@
         await executeGestureAction(profile);
     }
 
-    window.addEventListener('keydown', handleNativeGestureKey, true);
 
     async function quietSensors({ includeRaw = true, verifyRaw = true } = {}) {
         if (!ringDevice?.gatt?.connected) return { rawStopped: true };
@@ -1251,7 +1236,7 @@
     async function startGestures(quiet = false) {
         if (!ringDevice?.gatt?.connected) throw new Error('Anello non connesso');
         if (measureState) await stopCurrentMeasurement(true);
-        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        gestureInputMode = el('ringGestureMode')?.value === 'motion' ? 'motion' : 'accel';
         await quietSensors({ includeRaw: true, verifyRaw: false });
         gestureMode = true;
         gestureActiveMode = gestureInputMode;
@@ -1261,16 +1246,24 @@
         metricText('ringGestureTraining', 'Pronto');
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '⏹️ Ferma gesti';
 
-        if (gestureActiveMode === 'native') {
-            metricText('ringGesture', 'Nativo: in ascolto…');
-            metricText('ringAccelX', '--'); metricText('ringAccelY', '--'); metricText('ringAccelZ', '--');
-            if (!quiet) setRingStatus('Gesti nativi attivi: il flusso X/Y/Z non viene acceso. I LED devono restare spenti mentre l’app ascolta i comandi del R09.', 'success');
-            return;
-        }
+        // A1 04 03 = accelerometer-only on documented COLMI RF03/R02-family firmware.
+        // It streams the same A1 03 XYZ packets without enabling the optical PPG/SpO2 LEDs.
+        const sensorMode = gestureActiveMode === 'accel' ? 0x03 : 0x04;
+        const beforeStart = lastRawNotificationAt;
+        await writePrimary(makePacket(CMD_RAW, [0x04, sensorMode]));
+        metricText('ringGesture', gestureProfiles.length ? 'In ascolto…' : 'In ascolto / da programmare');
 
-        await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
-        metricText('ringGesture', gestureProfiles.some(g => g.mode !== 'native') ? 'In ascolto…' : 'In ascolto / da programmare');
-        if (!quiet) setRingStatus('Gesti personalizzati X/Y/Z attivi. Su questo firmware i LED possono restare accesi finché il flusso movimento è attivo.', 'success');
+        if (gestureActiveMode === 'accel') {
+            if (!quiet) setRingStatus('Accelerometro LED spenti attivo. Muovi la mano: il contatore Campioni deve aumentare senza accendere i LED ottici.', 'success');
+            // Give the firmware a moment and warn if this revision does not implement A1 04 03.
+            setTimeout(() => {
+                if (gestureMode && gestureActiveMode === 'accel' && lastRawNotificationAt <= beforeStart) {
+                    setRingStatus('Nessun campione ricevuto in modalità LED spenti. Questa revisione potrebbe non supportare A1 04 03: prova “Compatibilità · LED accesi”.', 'warning');
+                }
+            }, 2600);
+        } else if (!quiet) {
+            setRingStatus('Modalità compatibilità attiva: X/Y/Z funzionano, ma i LED ottici possono restare accesi finché i gesti sono in ascolto.', 'warning');
+        }
     }
 
     async function stopGestures(quiet = false) {
@@ -1447,7 +1440,7 @@
         gestureConfidenceThreshold = Math.max(45, Math.min(90, threshold));
         gestureAutoStart = !!el('ringGestureAutoStart')?.checked;
         gestureVibrate = !!el('ringGestureVibrate')?.checked;
-        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        gestureInputMode = el('ringGestureMode')?.value === 'motion' ? 'motion' : 'accel';
         metricText('ringGestureSensitivityValue', `${gestureConfidenceThreshold}%`);
         saveGestureSettings();
     };
@@ -1459,13 +1452,13 @@
     };
 
     window.ringGestureModeChanged = async function ringGestureModeChanged() {
-        gestureInputMode = el('ringGestureMode')?.value === 'native' ? 'native' : 'motion';
+        gestureInputMode = el('ringGestureMode')?.value === 'motion' ? 'motion' : 'accel';
         saveGestureSettings();
         if (gestureMode && gestureActiveMode !== gestureInputMode) {
             try { await stopGestures(true); await startGestures(false); }
             catch (e) { setRingStatus(`Cambio modalità gesti non riuscito: ${e.message || e}`, 'warning'); }
-        } else if (gestureInputMode === 'native') {
-            setRingStatus('Modalità nativa selezionata. Quando la attivi i LED ottici restano spenti; registra un gesto eseguendolo dopo “Registra gesto”.', 'info');
+        } else if (gestureInputMode === 'accel') {
+            setRingStatus('Modalità accelerometro LED spenti selezionata. Usa A1 04 03: X/Y/Z devono muoversi senza accendere i LED ottici.', 'info');
         }
     };
 

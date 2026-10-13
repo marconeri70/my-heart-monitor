@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v8-colmi-r09-reconnect';
+const CACHE_NAME = 'heart-monitor-v9-colmi-r09-accel-only';
 const APP_SHELL = [
     './',
     './index.html',
