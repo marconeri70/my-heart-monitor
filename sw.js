@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v7-colmi-r09-gesture-native';
+const CACHE_NAME = 'heart-monitor-v8-colmi-r09-reconnect';
 const APP_SHELL = [
     './',
     './index.html',

@@ -1493,51 +1493,86 @@
         } catch (e) { setRingStatus(`Batteria non letta: ${e.message || e}`, 'error'); }
     };
 
+    const LAST_RING_ID_KEY = 'heartMonitorLastRingId';
+
+    function isColmiName(name = '') {
+        return /^(R09|R12|R10|R06|R03|R02|COLMI)/i.test(name || '');
+    }
+
+    async function attachRingDevice(device) {
+        if (!device?.gatt) throw new Error('Dispositivo Bluetooth non valido');
+        ringDevice = device;
+        try { ringDevice.removeEventListener('gattserverdisconnected', handleDisconnected); } catch (_) {}
+        ringDevice.addEventListener('gattserverdisconnected', handleDisconnected);
+        gattServer = ringDevice.gatt.connected ? ringDevice.gatt : await ringDevice.gatt.connect();
+
+        const service = await gattServer.getPrimaryService(PRIMARY_SERVICE_UUID);
+        primaryWrite = await service.getCharacteristic(PRIMARY_WRITE_UUID);
+        primaryNotify = await service.getCharacteristic(PRIMARY_NOTIFY_UUID);
+        await primaryNotify.startNotifications();
+        primaryNotify.addEventListener('characteristicvaluechanged', onPrimaryNotification);
+
+        try {
+            const bigService = await gattServer.getPrimaryService(BIG_SERVICE_UUID);
+            bigWrite = await bigService.getCharacteristic(BIG_WRITE_UUID);
+            bigNotify = await bigService.getCharacteristic(BIG_NOTIFY_UUID);
+            await bigNotify.startNotifications();
+            bigNotify.addEventListener('characteristicvaluechanged', onBigNotification);
+        } catch (_) {
+            bigWrite = null; bigNotify = null;
+        }
+
+        try { localStorage.setItem(LAST_RING_ID_KEY, ringDevice.id || ''); } catch (_) {}
+        metricText('ringName', ringDevice.name || 'COLMI');
+        setConnectedUi(true);
+        setBusyUi(false);
+        setRingStatus(`COLMI ${ringDevice.name || ''} collegato.`, 'success');
+        void readDeviceInfo();
+        try { await readBatteryAsync(); } catch (_) {}
+        if (gestureAutoStart && gestureProfiles.length) { try { await startGestures(true); } catch (_) {} }
+    }
+
     window.ringConnect = async function ringConnect() {
         if (!navigator.bluetooth) {
             setRingStatus('Web Bluetooth non disponibile. Usa Chrome/Chromium su Android e una pagina HTTPS.', 'error');
             return;
         }
+        setBusyUi(true);
         try {
-            setRingStatus('Seleziona R09_D502 dall’elenco Bluetooth…', 'info');
-            ringDevice = await navigator.bluetooth.requestDevice({
+            // Prima prova a riutilizzare l’autorizzazione già concessa al nostro R09.
+            // Così non serve riaprire ogni volta la finestra di accoppiamento Android.
+            if (navigator.bluetooth.getDevices) {
+                let remembered = [];
+                try { remembered = await navigator.bluetooth.getDevices(); } catch (_) {}
+                const lastId = (() => { try { return localStorage.getItem(LAST_RING_ID_KEY) || ''; } catch (_) { return ''; } })();
+                const candidate = remembered.find(d => d.id === lastId) || remembered.find(d => isColmiName(d.name));
+                if (candidate) {
+                    setRingStatus(`Ricollegamento a ${candidate.name || 'COLMI'}…`, 'info');
+                    try {
+                        await attachRingDevice(candidate);
+                        return;
+                    } catch (e) {
+                        setConnectedUi(false);
+                        setBusyUi(false);
+                        throw new Error(`L’anello è già autorizzato ma al momento non è raggiungibile. Probabilmente è collegato a QRing, a un’altra scheda di Heart Monitor o al controllo gestuale Bluetooth di Android. Chiudi/disconnetti l’altra connessione e riprova. (${e.message || e})`);
+                    }
+                }
+            }
+
+            setRingStatus('Prima associazione: seleziona R09_D502 dall’elenco Bluetooth…', 'info');
+            const selected = await navigator.bluetooth.requestDevice({
                 filters: [
                     { namePrefix: 'R09' }, { namePrefix: 'R12' }, { namePrefix: 'R10' },
                     { namePrefix: 'R06' }, { namePrefix: 'R03' }, { namePrefix: 'R02' }, { namePrefix: 'COLMI' }
                 ],
                 optionalServices: [PRIMARY_SERVICE_UUID, BIG_SERVICE_UUID, DEVICE_INFO_SERVICE]
             });
-            ringDevice.addEventListener('gattserverdisconnected', handleDisconnected);
-            gattServer = await ringDevice.gatt.connect();
-
-            const service = await gattServer.getPrimaryService(PRIMARY_SERVICE_UUID);
-            primaryWrite = await service.getCharacteristic(PRIMARY_WRITE_UUID);
-            primaryNotify = await service.getCharacteristic(PRIMARY_NOTIFY_UUID);
-            await primaryNotify.startNotifications();
-            primaryNotify.addEventListener('characteristicvaluechanged', onPrimaryNotification);
-
-            // Big-data service is optional on some revisions. The app remains usable without it.
-            try {
-                const bigService = await gattServer.getPrimaryService(BIG_SERVICE_UUID);
-                bigWrite = await bigService.getCharacteristic(BIG_WRITE_UUID);
-                bigNotify = await bigService.getCharacteristic(BIG_NOTIFY_UUID);
-                await bigNotify.startNotifications();
-                bigNotify.addEventListener('characteristicvaluechanged', onBigNotification);
-            } catch (_) {
-                bigWrite = null; bigNotify = null;
-            }
-
-            metricText('ringName', ringDevice.name || 'COLMI');
-            setConnectedUi(true);
-            setBusyUi(false);
-            setRingStatus('COLMI collegato. Puoi usare “Sincronizza tutto”.', 'success');
-            void readDeviceInfo();
-            try { await readBatteryAsync(); } catch (_) {}
-            if (gestureAutoStart && gestureProfiles.length) { try { await startGestures(true); } catch (_) {} }
+            await attachRingDevice(selected);
         } catch (error) {
-            if (error?.name === 'NotFoundError') setRingStatus('Nessun anello selezionato.', 'warning');
-            else setRingStatus(`Connessione non riuscita: ${error.message || error}. Chiudi QRing e riprova.`, 'error');
+            if (error?.name === 'NotFoundError') setRingStatus('Nessun anello trovato/selezionato. Se era già collegato, chiudi QRing e le vecchie schede di Heart Monitor, poi riprova.', 'warning');
+            else setRingStatus(`Connessione non riuscita: ${error.message || error}`, 'error');
             setConnectedUi(false);
+            setBusyUi(false);
         }
     };
 
@@ -1583,6 +1618,12 @@
         if (ringDevice?.gatt?.connected) ringDevice.gatt.disconnect();
         handleDisconnected();
     };
+
+    window.addEventListener('pagehide', () => {
+        // Web Bluetooth non è affidabile in background: libera subito l'anello
+        // per evitare che una vecchia scheda/PWA lo renda invisibile alla ricerca successiva.
+        try { if (ringDevice?.gatt?.connected) ringDevice.gatt.disconnect(); } catch (_) {}
+    });
 
     window.addEventListener('load', () => {
         restoreMetrics();
