@@ -1,5 +1,5 @@
 /*
- * Heart Monitor Ultra — COLMI R09 all-in-one integration (v4)
+ * Heart Monitor Ultra — COLMI R09 all-in-one integration (v5)
  * Web Bluetooth, direct local connection. No QRing cloud required.
  *
  * Implemented in this build:
@@ -65,6 +65,17 @@
     let gestureMode = false;
     let lastAccel = null;
     let lastGestureAt = 0;
+    let gestureProfiles = [];
+    let gestureTraining = null;
+    let gestureLiveCapture = null;
+    let gestureSampleCount = 0;
+    let gestureConfidenceThreshold = 65;
+    let gestureAutoStart = false;
+    let gestureVibrate = true;
+    let gestureActionBusy = false;
+    let gestureAudioCtx = null;
+    const GESTURE_PROFILES_KEY = 'heart_ring_gesture_profiles_v5';
+    const GESTURE_SETTINGS_KEY = 'heart_ring_gesture_settings_v5';
 
     const metrics = {
         battery: null,
@@ -705,6 +716,295 @@
         return null;
     }
 
+    function gestureActionLabel(action) {
+        return ({
+            'sync-all': 'Sincronizza tutto',
+            'measure-hr': 'Misura battito',
+            'measure-spo2': 'Misura SpO₂',
+            'scroll-up': 'Scorri su',
+            'scroll-down': 'Scorri giù',
+            'go-top': 'Vai in alto',
+            'new-measurement': 'Vai a Nuova Misurazione',
+            'ring-card': 'Vai allo Smart Ring',
+            'vibrate': 'Vibra telefono',
+            'tone': 'Segnale sonoro',
+            'open-url': 'Apri link'
+        })[action] || action;
+    }
+
+    function loadGestureSettings() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(GESTURE_PROFILES_KEY) || '[]');
+            if (Array.isArray(parsed)) gestureProfiles = parsed.filter(g => g && g.id && Array.isArray(g.template));
+        } catch (_) { gestureProfiles = []; }
+        try {
+            const settings = JSON.parse(localStorage.getItem(GESTURE_SETTINGS_KEY) || '{}');
+            if (Number.isFinite(Number(settings.threshold))) gestureConfidenceThreshold = Math.max(45, Math.min(90, Number(settings.threshold)));
+            gestureAutoStart = !!settings.autoStart;
+            gestureVibrate = settings.vibrate !== false;
+        } catch (_) {}
+        const threshold = el('ringGestureSensitivity');
+        if (threshold) threshold.value = String(gestureConfidenceThreshold);
+        const thresholdValue = el('ringGestureSensitivityValue');
+        if (thresholdValue) thresholdValue.textContent = `${gestureConfidenceThreshold}%`;
+        const auto = el('ringGestureAutoStart');
+        if (auto) auto.checked = gestureAutoStart;
+        const vib = el('ringGestureVibrate');
+        if (vib) vib.checked = gestureVibrate;
+        renderGestureProfiles();
+    }
+
+    function saveGestureSettings() {
+        try { localStorage.setItem(GESTURE_PROFILES_KEY, JSON.stringify(gestureProfiles)); } catch (_) {}
+        try {
+            localStorage.setItem(GESTURE_SETTINGS_KEY, JSON.stringify({
+                threshold: gestureConfidenceThreshold,
+                autoStart: gestureAutoStart,
+                vibrate: gestureVibrate
+            }));
+        } catch (_) {}
+        renderGestureProfiles();
+    }
+
+    function renderGestureProfiles() {
+        const list = el('ringGestureProfiles');
+        const count = el('ringGestureCount');
+        if (count) count.textContent = String(gestureProfiles.filter(g => g.enabled !== false).length);
+        if (!list) return;
+        list.innerHTML = '';
+        if (!gestureProfiles.length) {
+            const empty = document.createElement('div');
+            empty.className = 'gesture-empty';
+            empty.textContent = 'Nessun gesto programmato. Scegli nome e azione, poi premi “Registra gesto”.';
+            list.appendChild(empty);
+            return;
+        }
+        const actionOptions = [
+            ['sync-all','Sincronizza tutto'], ['measure-hr','Misura battito'], ['measure-spo2','Misura SpO₂'],
+            ['scroll-up','Scorri su'], ['scroll-down','Scorri giù'], ['go-top','Vai in alto'],
+            ['new-measurement','Nuova Misurazione'], ['ring-card','Smart Ring'], ['vibrate','Vibra telefono'],
+            ['tone','Segnale sonoro'], ['open-url','Apri link']
+        ];
+        gestureProfiles.forEach(profile => {
+            const row = document.createElement('div');
+            row.className = 'gesture-profile-row';
+
+            const top = document.createElement('div');
+            top.className = 'gesture-profile-top';
+            const label = document.createElement('div');
+            label.className = 'gesture-profile-name';
+            label.textContent = profile.name;
+            const enabled = document.createElement('input');
+            enabled.type = 'checkbox'; enabled.checked = profile.enabled !== false;
+            enabled.title = 'Abilita/disabilita gesto';
+            enabled.addEventListener('change', () => {
+                profile.enabled = enabled.checked;
+                saveGestureSettings();
+            });
+            top.append(label, enabled);
+
+            const controls = document.createElement('div');
+            controls.className = 'gesture-profile-controls';
+            const select = document.createElement('select');
+            actionOptions.forEach(([value, text]) => {
+                const o = document.createElement('option'); o.value = value; o.textContent = text;
+                if (profile.action === value) o.selected = true;
+                select.appendChild(o);
+            });
+            select.addEventListener('change', () => {
+                profile.action = select.value;
+                if (select.value === 'open-url' && !profile.url) {
+                    const u = window.prompt('Inserisci il link da aprire (https://...)', 'https://');
+                    if (u && /^https:\/\//i.test(u.trim())) profile.url = u.trim();
+                    else if (!profile.url) profile.action = 'vibrate';
+                }
+                saveGestureSettings();
+            });
+            const retrain = document.createElement('button');
+            retrain.type = 'button'; retrain.className = 'gesture-mini-btn'; retrain.textContent = '🎯 Riregistra';
+            retrain.addEventListener('click', () => {
+                const n = el('ringGestureName'); const a = el('ringGestureAction'); const u = el('ringGestureUrl');
+                if (n) n.value = profile.name;
+                if (a) a.value = profile.action;
+                if (u) u.value = profile.url || '';
+                window.ringRecordGesture(profile.id);
+            });
+            const del = document.createElement('button');
+            del.type = 'button'; del.className = 'gesture-mini-btn danger'; del.textContent = '🗑';
+            del.addEventListener('click', () => {
+                gestureProfiles = gestureProfiles.filter(g => g.id !== profile.id);
+                saveGestureSettings();
+            });
+            controls.append(select, retrain, del);
+            row.append(top, controls);
+            if (profile.action === 'open-url' && profile.url) {
+                const small = document.createElement('div'); small.className='gesture-profile-url'; small.textContent = profile.url;
+                row.appendChild(small);
+            }
+            list.appendChild(row);
+        });
+    }
+
+    function resampleGesture(samples, points = 18) {
+        if (!Array.isArray(samples) || samples.length < 5) return null;
+        const clean = samples.filter(s => s && Number.isFinite(s.gX) && Number.isFinite(s.gY) && Number.isFinite(s.gZ));
+        if (clean.length < 5) return null;
+        const base = clean[0];
+        const vectors = clean.map(s => [s.gX - base.gX, s.gY - base.gY, s.gZ - base.gZ]);
+        let scale = 0;
+        for (const v of vectors) scale = Math.max(scale, Math.hypot(v[0], v[1], v[2]));
+        if (scale < 0.18) return null;
+        const normalized = vectors.map(v => v.map(x => x / scale));
+        const out = [];
+        for (let p = 0; p < points; p++) {
+            const pos = (p * (normalized.length - 1)) / (points - 1);
+            const i = Math.floor(pos), f = pos - i;
+            const a = normalized[i], b = normalized[Math.min(i + 1, normalized.length - 1)];
+            out.push([
+                a[0] + (b[0] - a[0]) * f,
+                a[1] + (b[1] - a[1]) * f,
+                a[2] + (b[2] - a[2]) * f
+            ]);
+        }
+        return out;
+    }
+
+    function gestureDistance(a, b) {
+        if (!Array.isArray(a) || !Array.isArray(b) || !a.length || a.length !== b.length) return Infinity;
+        let sum = 0;
+        for (let i = 0; i < a.length; i++) {
+            const dx = a[i][0] - b[i][0], dy = a[i][1] - b[i][1], dz = a[i][2] - b[i][2];
+            sum += dx*dx + dy*dy + dz*dz;
+        }
+        return Math.sqrt(sum / (a.length * 3));
+    }
+
+    function beepGesture() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!gestureAudioCtx) gestureAudioCtx = new AudioCtx();
+            const ctx = gestureAudioCtx;
+            if (ctx.state === 'suspended') void ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = 740; gain.gain.value = 0.04;
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.10);
+        } catch (_) {}
+    }
+
+    async function executeGestureAction(profile, confidence) {
+        if (!profile || profile.enabled === false) return;
+        metricText('ringGesture', `${profile.name} · ${confidence}%`);
+        metricText('ringGestureLastAction', gestureActionLabel(profile.action));
+        if (gestureVibrate && navigator.vibrate) navigator.vibrate(70);
+        lastGestureAt = Date.now();
+        const action = profile.action;
+        if (action === 'scroll-up') { window.scrollBy({ top: -Math.max(350, innerHeight * 0.72), behavior: 'smooth' }); return; }
+        if (action === 'scroll-down') { window.scrollBy({ top: Math.max(350, innerHeight * 0.72), behavior: 'smooth' }); return; }
+        if (action === 'go-top') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+        if (action === 'new-measurement') { el('sis')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+        if (action === 'ring-card') { el('ring-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        if (action === 'vibrate') { if (navigator.vibrate) navigator.vibrate([120, 70, 120]); return; }
+        if (action === 'tone') { beepGesture(); return; }
+        if (action === 'open-url') {
+            if (profile.url && /^https:\/\//i.test(profile.url)) window.location.href = profile.url;
+            else setRingStatus(`Il gesto “${profile.name}” non ha un link valido.`, 'warning');
+            return;
+        }
+        if (gestureActionBusy) return;
+        gestureActionBusy = true;
+        try {
+            if (action === 'sync-all' && typeof window.ringSyncAll === 'function') await window.ringSyncAll();
+            else if (action === 'measure-hr' && typeof window.ringMeasureMetric === 'function') await window.ringMeasureMetric('hr');
+            else if (action === 'measure-spo2' && typeof window.ringMeasureMetric === 'function') await window.ringMeasureMetric('spo2');
+        } finally { gestureActionBusy = false; }
+    }
+
+    function finishLiveGestureCapture() {
+        const capture = gestureLiveCapture;
+        if (!capture) return;
+        if (capture.timer) clearTimeout(capture.timer);
+        gestureLiveCapture = null;
+        const seq = resampleGesture(capture.samples);
+        if (!seq || !gestureProfiles.length) return;
+        let best = null;
+        for (const profile of gestureProfiles) {
+            if (profile.enabled === false || !Array.isArray(profile.template)) continue;
+            const dist = gestureDistance(profile.template, seq);
+            // Empirical score: identical trajectory ≈100; ~0.2 RMS difference ≈67.
+            const confidence = Math.max(0, Math.min(100, Math.round(100 * Math.exp(-2.0 * dist))));
+            if (!best || confidence > best.confidence) best = { profile, confidence, dist };
+        }
+        if (!best) return;
+        metricText('ringGestureConfidence', `${best.confidence}%`);
+        if (best.confidence >= gestureConfidenceThreshold) {
+            lastGestureAt = Date.now();
+            void executeGestureAction(best.profile, best.confidence);
+        } else {
+            metricText('ringGesture', `Non riconosciuto · ${best.confidence}%`);
+        }
+    }
+
+    function maybeStartLiveGesture(acc, previous) {
+        if (!gestureMode || gestureTraining || gestureLiveCapture || Date.now() - lastGestureAt < 1500) return;
+        const enabledProfiles = gestureProfiles.filter(g => g.enabled !== false);
+        if (!enabledProfiles.length || !previous) return;
+        const dx = acc.gX - previous.gX, dy = acc.gY - previous.gY, dz = acc.gZ - previous.gZ;
+        const impulse = Math.hypot(dx, dy, dz);
+        // Low enough to catch deliberate wrist/finger motion; template matching rejects most noise.
+        if (impulse < 0.42) return;
+        gestureLiveCapture = { samples: [previous, acc], startedAt: Date.now(), timer: null };
+        metricText('ringGesture', 'Rilevamento…');
+        gestureLiveCapture.timer = setTimeout(finishLiveGestureCapture, 1550);
+    }
+
+    async function recordGestureProfile(replaceId = null) {
+        if (!ringDevice?.gatt?.connected) throw new Error('Collega prima l’anello');
+        const name = (el('ringGestureName')?.value || '').trim() || `Gesto ${gestureProfiles.length + 1}`;
+        const action = el('ringGestureAction')?.value || 'vibrate';
+        let url = (el('ringGestureUrl')?.value || '').trim();
+        if (action === 'open-url' && !/^https:\/\//i.test(url)) throw new Error('Per “Apri link” inserisci un indirizzo https:// valido');
+        if (!gestureMode) await startGestures(true);
+
+        const btn = el('ringGestureRecordBtn');
+        if (btn) btn.disabled = true;
+        metricText('ringGestureTraining', 'Preparati…');
+        setRingStatus(`Registrazione gesto “${name}”: preparati.`, 'info');
+        // Suppress recognition during the countdown so an old gesture cannot fire.
+        gestureTraining = { samples: [], name, action, url, replaceId, countdown: true };
+        try {
+            for (const n of [3,2,1]) {
+                metricText('ringGestureTraining', String(n));
+                if (navigator.vibrate) navigator.vibrate(35);
+                await delay(650);
+            }
+            gestureTraining = { samples: [], name, action, url, replaceId, countdown: false };
+            gestureSampleCount = 0;
+            metricText('ringGestureTraining', 'MUOVI ORA');
+            metricText('ringGesture', 'Registrazione…');
+            if (navigator.vibrate) navigator.vibrate(80);
+            await delay(1900);
+            const training = gestureTraining;
+            gestureTraining = null;
+            const template = resampleGesture(training.samples);
+            if (!template) throw new Error('Movimento non rilevato abbastanza bene. Riprova con un gesto più deciso.');
+            const id = replaceId || `${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`;
+            const profile = { id, name, action, url, template, enabled: true, createdAt: new Date().toISOString() };
+            const idx = gestureProfiles.findIndex(g => g.id === id);
+            if (idx >= 0) gestureProfiles[idx] = profile; else gestureProfiles.push(profile);
+            saveGestureSettings();
+            metricText('ringGestureTraining', 'Salvato ✓');
+            setRingStatus(`Gesto “${name}” registrato. Ora eseguilo di nuovo per provarlo.`, 'success');
+            if (navigator.vibrate) navigator.vibrate([60,50,60]);
+        } finally {
+            gestureTraining = null;
+            if (btn) btn.disabled = false;
+            setTimeout(() => metricText('ringGestureTraining', 'Pronto'), 1800);
+        }
+    }
+
     function parseAccelerometer(bytes) {
         if (bytes.length < 8 || bytes[1] !== 3) return null;
         const int12 = v => v > 2047 ? v - 4096 : v;
@@ -723,24 +1023,38 @@
         metricText('ringAccelX', acc.gX.toFixed(2));
         metricText('ringAccelY', acc.gY.toFixed(2));
         metricText('ringAccelZ', acc.gZ.toFixed(2));
-        if (!lastAccel) { lastAccel = acc; return; }
-        const now = Date.now();
-        if (now - lastGestureAt < 700) { lastAccel = acc; return; }
-        const dx = acc.gX - lastAccel.gX;
-        const dy = acc.gY - lastAccel.gY;
-        const dz = acc.gZ - lastAccel.gZ;
-        const impulse = Math.sqrt(dx*dx + dy*dy + dz*dz);
-        let gesture = null;
-        if (impulse > 3.0) gesture = 'Movimento rapido';
-        else if (dx > 1.8) gesture = 'Scatto a destra';
-        else if (dx < -1.8) gesture = 'Scatto a sinistra';
-        else if (dy > 1.8) gesture = 'Scatto in alto';
-        else if (dy < -1.8) gesture = 'Scatto in basso';
-        if (gesture) {
-            metricText('ringGesture', gesture);
-            lastGestureAt = now;
-        }
+        gestureSampleCount++;
+        metricText('ringGestureSamples', String(gestureSampleCount));
+
+        const previous = lastAccel;
         lastAccel = acc;
+
+        if (gestureTraining) {
+            gestureTraining.samples.push(acc);
+            metricText('ringGestureSamples', String(gestureTraining.samples.length));
+            return;
+        }
+
+        if (gestureLiveCapture) {
+            gestureLiveCapture.samples.push(acc);
+            return;
+        }
+
+        // Keep the quick diagnostic hints from v4 even with no programmed profiles.
+        if (previous && Date.now() - lastGestureAt > 700) {
+            const dx = acc.gX - previous.gX;
+            const dy = acc.gY - previous.gY;
+            const dz = acc.gZ - previous.gZ;
+            const impulse = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            let hint = null;
+            if (impulse > 3.0) hint = 'Movimento rapido';
+            else if (dx > 1.8) hint = 'Scatto a destra';
+            else if (dx < -1.8) hint = 'Scatto a sinistra';
+            else if (dy > 1.8) hint = 'Scatto in alto';
+            else if (dy < -1.8) hint = 'Scatto in basso';
+            if (hint && !gestureProfiles.length) metricText('ringGesture', hint);
+        }
+        maybeStartLiveGesture(acc, previous);
     }
 
     function onPrimaryNotification(event) {
@@ -810,10 +1124,13 @@
         if (measureState) await stopCurrentMeasurement(true);
         await writePrimary(makePacket(CMD_RAW, [0x04, 0x04]));
         gestureMode = true;
+        gestureSampleCount = 0;
         lastAccel = null;
-        metricText('ringGesture', 'In ascolto…');
+        metricText('ringGestureSamples', '0');
+        metricText('ringGesture', gestureProfiles.length ? 'In ascolto…' : 'In ascolto / da programmare');
+        metricText('ringGestureTraining', 'Pronto');
         if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '⏹️ Ferma gesti';
-        if (!quiet) setRingStatus('Modalità movimento attiva. Muovi la mano per vedere assi e gesti sperimentali.', 'success');
+        if (!quiet) setRingStatus('Modalità gesti attiva. L’app riceve il movimento dall’anello e riconosce i profili programmati.', 'success');
     }
 
     async function stopGestures(quiet = false) {
@@ -822,8 +1139,12 @@
         }
         gestureMode = false;
         lastAccel = null;
-        if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '🖐️ Gesti / movimento';
-        if (!quiet) setRingStatus('Modalità movimento fermata.', 'info');
+        gestureTraining = null;
+        if (gestureLiveCapture?.timer) clearTimeout(gestureLiveCapture.timer);
+        gestureLiveCapture = null;
+        if (el('ringGestureBtn')) el('ringGestureBtn').textContent = '🖐️ Attiva gesti';
+        metricText('ringGestureTraining', 'Fermo');
+        if (!quiet) setRingStatus('Modalità gesti fermata.', 'info');
     }
 
     async function readDeviceInfo() {
@@ -866,8 +1187,10 @@
 
     window.ringSyncAll = async function ringSyncAll() {
         if (!ringDevice?.gatt?.connected || syncAllRunning) return;
+        const resumeGestures = gestureMode;
         syncAllRunning = true;
         setBusyUi(true);
+        if (resumeGestures) { try { await stopGestures(true); } catch (_) {} }
         setProgress(2, 'Avvio sincronizzazione completa…');
         setRingStatus('Sincronizzazione completa avviata. Tieni l’anello al dito e la mano il più possibile ferma durante le misure.', 'info');
 
@@ -907,6 +1230,7 @@
         } finally {
             syncAllRunning = false;
             setBusyUi(false);
+            if ((resumeGestures || gestureAutoStart) && ringDevice?.gatt?.connected) { try { await startGestures(true); } catch (_) {} }
             setTimeout(() => setProgress(null), 3000);
         }
     };
@@ -915,15 +1239,20 @@
         if (!ringDevice?.gatt?.connected) { setRingStatus('Collega prima l’anello.', 'warning'); return; }
         const cfg = SENSOR[key];
         if (!cfg) return;
+        const resumeGestures = gestureMode;
         setBusyUi(true);
         try {
+            if (resumeGestures) await stopGestures(true);
             if (!syncAllRunning) setRingStatus(`${cfg.label}: cerco il dato più affidabile disponibile (storico o misura diretta)…`, 'info');
             const value = await getMetricBestEffort(key);
             if (value == null) setRingStatus(`${cfg.label}: nessun dato disponibile ancora. Indossa l’anello per un po’ e riprova.`, 'warning');
             else setRingStatus(`${cfg.label}: ${key === 'temperature' ? value.toFixed(1) : value}${cfg.unit ? ' ' + cfg.unit : ''}.`, 'success');
         } catch (e) {
             setRingStatus(`Errore ${cfg.label}: ${e.message || e}`, 'error');
-        } finally { setBusyUi(false); }
+        } finally {
+            setBusyUi(false);
+            if (resumeGestures && ringDevice?.gatt?.connected) { try { await startGestures(true); } catch (_) {} }
+        }
     };
 
     window.ringSyncActivitySleep = async function ringSyncActivitySleep() {
@@ -938,6 +1267,35 @@
             if (gestureMode) await stopGestures(false);
             else await startGestures(false);
         } catch (e) { setRingStatus(`Gesti non disponibili su questo firmware: ${e.message || e}`, 'warning'); }
+    };
+
+    window.ringRecordGesture = async function ringRecordGesture(replaceId = null) {
+        try { await recordGestureProfile(replaceId); }
+        catch (e) { setRingStatus(`Registrazione gesto: ${e.message || e}`, 'warning'); metricText('ringGestureTraining', 'Riprova'); }
+    };
+
+    window.ringGestureSettingChanged = function ringGestureSettingChanged() {
+        const threshold = Number(el('ringGestureSensitivity')?.value || 65);
+        gestureConfidenceThreshold = Math.max(45, Math.min(90, threshold));
+        gestureAutoStart = !!el('ringGestureAutoStart')?.checked;
+        gestureVibrate = !!el('ringGestureVibrate')?.checked;
+        metricText('ringGestureSensitivityValue', `${gestureConfidenceThreshold}%`);
+        saveGestureSettings();
+    };
+
+    window.ringGestureActionChanged = function ringGestureActionChanged() {
+        const show = el('ringGestureAction')?.value === 'open-url';
+        const wrap = el('ringGestureUrlWrap');
+        if (wrap) wrap.style.display = show ? 'block' : 'none';
+    };
+
+    window.ringClearGestures = function ringClearGestures() {
+        if (!gestureProfiles.length) return;
+        if (!window.confirm('Eliminare tutti i gesti programmati?')) return;
+        gestureProfiles = [];
+        saveGestureSettings();
+        metricText('ringGesture', 'Da programmare');
+        setRingStatus('Gesti programmati eliminati.', 'info');
     };
 
     window.ringReadBattery = async function ringReadBattery() {
@@ -989,6 +1347,7 @@
             setRingStatus('COLMI collegato. Puoi usare “Sincronizza tutto”.', 'success');
             void readDeviceInfo();
             try { await readBatteryAsync(); } catch (_) {}
+            if (gestureAutoStart && gestureProfiles.length) { try { await startGestures(true); } catch (_) {} }
         } catch (error) {
             if (error?.name === 'NotFoundError') setRingStatus('Nessun anello selezionato.', 'warning');
             else setRingStatus(`Connessione non riuscita: ${error.message || error}. Chiudi QRing e riprova.`, 'error');
@@ -1012,6 +1371,9 @@
         clearPending('Anello disconnesso');
         syncAllRunning = false;
         gestureMode = false;
+        gestureTraining = null;
+        if (gestureLiveCapture?.timer) clearTimeout(gestureLiveCapture.timer);
+        gestureLiveCapture = null;
         primaryWrite = null; primaryNotify = null; bigWrite = null; bigNotify = null; gattServer = null;
         setConnectedUi(false); setBusyUi(false); setProgress(null);
         setRingStatus('Anello disconnesso.', 'warning');
@@ -1034,6 +1396,8 @@
 
     window.addEventListener('load', () => {
         restoreMetrics();
+        loadGestureSettings();
+        window.ringGestureActionChanged();
         setConnectedUi(false);
         setBusyUi(false);
         if (!navigator.bluetooth) setRingStatus('Bluetooth diretto non disponibile qui. Usa Chrome/Chromium su Android tramite HTTPS.', 'warning');

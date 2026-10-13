@@ -44,3 +44,12 @@ I valori dell'anello sono dati wellness e non misure cliniche. La pressione arte
 - Sleep, SpO2 history and R09 temperature history now use the V2 channel.
 - Stress and HRV use their history commands (0x37/0x39) before falling back to spot reads.
 - New-calorie-protocol activity values are converted to kcal correctly (e.g. 2220 protocol units = 2.22 kcal).
+
+
+## v5 - Gesti programmabili
+
+Questa versione aggiunge una sezione per programmare gesti personalizzati usando il flusso del movimento dell'anello. Ogni gesto può essere registrato una volta e associato a un'azione: sincronizzazione completa, battito, SpO2, scorrimento pagina, navigazione nella app, vibrazione, segnale sonoro o apertura di un link HTTPS.
+
+I profili sono salvati localmente nel browser. La soglia di riconoscimento e l'avvio automatico dopo la connessione sono configurabili. La modalità gesti usa il flusso accelerometro sperimentale del ring e può aumentare il consumo della batteria.
+
+Per testare: chiudere QRing, collegare R09_D502, premere **Attiva gesti**, poi **Registra gesto**. Dopo il conto alla rovescia eseguire il movimento una volta. Ripeterlo per verificare riconoscimento e azione.

@@ -160,6 +160,36 @@
         .ring-disconnect { background:rgba(255,59,48,.08); color:#D70015; box-shadow:none; margin-top:8px; }
         .ring-disconnect:hover { background:rgba(255,59,48,.13); box-shadow:none; }
         .ring-note { color:var(--text-light); font-size:11px; line-height:1.45; font-weight:700; margin:10px 2px 0; }
+        .gesture-programmer { margin-top:12px; padding:13px; border-radius:17px; background:linear-gradient(145deg,rgba(88,86,214,.07),rgba(0,122,255,.045)); border:1px solid rgba(88,86,214,.09); }
+        .gesture-programmer-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+        .gesture-programmer-head strong { font-size:12px; letter-spacing:.6px; text-transform:uppercase; }
+        .gesture-count { font-size:10px; font-weight:900; color:var(--secondary); background:rgba(0,122,255,.08); padding:5px 8px; border-radius:999px; }
+        .gesture-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .gesture-grid .full { grid-column:1/-1; }
+        .gesture-field label { display:block; font-size:9px; text-transform:uppercase; letter-spacing:.5px; font-weight:900; color:var(--text-light); margin:0 0 5px 4px; }
+        .gesture-field input, .gesture-field select { width:100%; border:1px solid rgba(0,0,0,.07); background:rgba(255,255,255,.9); border-radius:12px; padding:10px 11px; font-size:12px; font-weight:800; color:var(--text-dark); outline:none; }
+        .gesture-field input:focus, .gesture-field select:focus { border-color:rgba(0,122,255,.35); box-shadow:0 0 0 3px rgba(0,122,255,.07); }
+        .gesture-record { margin:10px 0 6px; background:linear-gradient(135deg,#FF2A5F,#FF375F); box-shadow:0 8px 18px rgba(255,42,95,.22); }
+        .gesture-live { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:8px 0; }
+        .gesture-live div { background:rgba(255,255,255,.78); border-radius:11px; padding:8px 5px; text-align:center; font-size:8px; font-weight:900; color:var(--text-light); text-transform:uppercase; }
+        .gesture-live strong { display:block; color:var(--text-dark); font-size:12px; margin-top:3px; text-transform:none; }
+        .gesture-settings { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:9px 0; }
+        .gesture-toggle { display:flex; align-items:center; gap:7px; background:rgba(255,255,255,.72); padding:9px; border-radius:11px; font-size:10px; font-weight:800; color:var(--text-dark); }
+        .gesture-toggle input { width:17px; height:17px; accent-color:var(--secondary); }
+        .gesture-sensitivity { margin:8px 0; background:rgba(255,255,255,.72); padding:9px 10px; border-radius:11px; }
+        .gesture-sensitivity-top { display:flex; justify-content:space-between; font-size:9px; font-weight:900; text-transform:uppercase; color:var(--text-light); }
+        .gesture-sensitivity input { width:100%; margin-top:6px; accent-color:var(--secondary); }
+        .gesture-profile-row { background:rgba(255,255,255,.82); border-radius:13px; padding:9px; margin-top:7px; border:1px solid rgba(0,0,0,.035); }
+        .gesture-profile-top { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+        .gesture-profile-name { font-size:12px; font-weight:900; color:var(--text-dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .gesture-profile-controls { display:grid; grid-template-columns:1fr auto auto; gap:5px; margin-top:7px; }
+        .gesture-profile-controls select { min-width:0; border:0; border-radius:9px; background:rgba(88,86,214,.07); padding:7px; font-size:9px; font-weight:800; color:var(--text-dark); }
+        .gesture-mini-btn { margin:0 !important; padding:7px 8px !important; border-radius:9px !important; box-shadow:none !important; font-size:9px !important; letter-spacing:0 !important; min-width:auto !important; }
+        .gesture-mini-btn.danger { background:rgba(255,59,48,.08); color:#D70015; }
+        .gesture-profile-url { margin-top:5px; font-size:8px; color:var(--text-light); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .gesture-empty { padding:10px 6px; font-size:10px; color:var(--text-light); line-height:1.45; font-weight:700; text-align:center; }
+        .gesture-clear { width:auto; margin:8px auto 0 !important; display:block; background:transparent !important; color:#D70015 !important; box-shadow:none !important; padding:7px 10px !important; font-size:9px !important; }
+        @media (max-width:420px) { .gesture-grid { grid-template-columns:1fr; } .gesture-grid .full { grid-column:auto; } .gesture-settings { grid-template-columns:1fr; } }
         @media (max-width:380px) { .ring-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
         h2 { font-size: 20px; margin-top: 0; padding-bottom: 16px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); font-weight: 900; border-bottom: 2px solid rgba(0,0,0,0.03);}
         #status { font-weight: 800; text-align: center; margin-top: 10px; font-size: 15px; min-height: 22px; transition: 0.3s;}
@@ -317,7 +347,7 @@
             <button data-ring-measure data-ring-action onclick="ringMeasureMetric('temperature')" disabled>🌡️ Temperatura*</button>
             <button data-ring-measure data-ring-action onclick="ringMeasureMetric('stress')" disabled>🧠 Stress*</button>
             <button data-ring-measure data-ring-action onclick="ringMeasureMetric('hrv')" disabled>💓 HRV*</button>
-            <button id="ringGestureBtn" data-ring-action class="btn-secondary" onclick="ringToggleGestures()" disabled>🖐️ Gesti / movimento</button>
+            <button id="ringGestureBtn" data-ring-action class="btn-secondary" onclick="ringToggleGestures()" disabled>🖐️ Attiva gesti</button>
         </div>
 
         <div class="ring-gesture-box">
@@ -330,9 +360,63 @@
                 <div>Z (G)<strong id="ringAccelZ">--</strong></div>
             </div>
         </div>
+        <div class="gesture-programmer">
+            <div class="gesture-programmer-head">
+                <strong>🪄 Gesti programmabili</strong>
+                <span class="gesture-count"><span id="ringGestureCount">0</span> attivi</span>
+            </div>
+            <div class="gesture-grid">
+                <div class="gesture-field">
+                    <label>Nome gesto</label>
+                    <input id="ringGestureName" maxlength="28" placeholder="es. Scatto a destra" value="Scatto a destra">
+                </div>
+                <div class="gesture-field">
+                    <label>Azione</label>
+                    <select id="ringGestureAction" onchange="ringGestureActionChanged()">
+                        <option value="scroll-down">Scorri giù</option>
+                        <option value="scroll-up">Scorri su</option>
+                        <option value="sync-all">Sincronizza tutto</option>
+                        <option value="measure-hr">Misura battito</option>
+                        <option value="measure-spo2">Misura SpO₂</option>
+                        <option value="go-top">Vai in alto</option>
+                        <option value="new-measurement">Nuova Misurazione</option>
+                        <option value="ring-card">Smart Ring</option>
+                        <option value="vibrate">Vibra telefono</option>
+                        <option value="tone">Segnale sonoro</option>
+                        <option value="open-url">Apri link</option>
+                    </select>
+                </div>
+                <div id="ringGestureUrlWrap" class="gesture-field full" style="display:none;">
+                    <label>Link da aprire</label>
+                    <input id="ringGestureUrl" inputmode="url" placeholder="https://...">
+                </div>
+            </div>
+
+            <button id="ringGestureRecordBtn" data-ring-action class="gesture-record" onclick="ringRecordGesture()" disabled>🎯 Registra gesto</button>
+
+            <div class="gesture-live">
+                <div>Registrazione<strong id="ringGestureTraining">Pronto</strong></div>
+                <div>Campioni<strong id="ringGestureSamples">0</strong></div>
+                <div>Affidabilità<strong id="ringGestureConfidence">--</strong></div>
+            </div>
+            <div style="font-size:9px; color:var(--text-light); font-weight:800; text-align:center; margin-top:-1px;">Ultima azione: <strong id="ringGestureLastAction" style="color:var(--text-dark);">--</strong></div>
+
+            <div class="gesture-sensitivity">
+                <div class="gesture-sensitivity-top"><span>Soglia riconoscimento</span><strong id="ringGestureSensitivityValue">65%</strong></div>
+                <input id="ringGestureSensitivity" type="range" min="45" max="90" step="1" value="65" oninput="ringGestureSettingChanged()">
+            </div>
+            <div class="gesture-settings">
+                <label class="gesture-toggle"><input id="ringGestureAutoStart" type="checkbox" onchange="ringGestureSettingChanged()"> Avvia gesti dopo la connessione</label>
+                <label class="gesture-toggle"><input id="ringGestureVibrate" type="checkbox" checked onchange="ringGestureSettingChanged()"> Vibrazione quando riconosciuto</label>
+            </div>
+
+            <div id="ringGestureProfiles"></div>
+            <button class="gesture-clear" onclick="ringClearGestures()">Elimina tutti i gesti</button>
+            <div class="ring-note" style="margin-top:5px;">Per programmare un gesto: scegli nome e azione, premi <b>Registra gesto</b>, attendi il conto alla rovescia e fai il movimento una volta. L'app lo riconosce in locale dal movimento dell'anello. La modalità gesti consuma più batteria.</div>
+        </div>
 
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
-        <p class="ring-note">* Temperatura, stress, HRV e riconoscimento dei movimenti dipendono dal firmware e sono sperimentali. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
+        <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano i dati di movimento ricevuti dall’anello e sono una funzione sperimentale. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
     </div>
 
     <div class="card">
@@ -439,7 +523,7 @@
         </div>
     </div>
 
-    <script src="ring.js"></script>
+    <script src="ring.js?v=5"></script>
 
     <script>
         function toggleMenu(event, menuId) {
