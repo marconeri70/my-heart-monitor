@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v11-local-first';
+const CACHE_NAME = 'heart-monitor-v12-sync-diagnostics';
 const APP_SHELL = [
     './',
     './index.html',
