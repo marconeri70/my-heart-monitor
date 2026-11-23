@@ -584,6 +584,7 @@
                 <div class="hc-kpi"><span>Ultimo sonno</span><strong id="hcSleep">--</strong><small>ore</small></div>
             </div>
             <div id="hcSources" class="hc-sources"></div>
+            <button class="btn-secondary" style="margin-top:12px;" onclick="apriHcPdfModal()">📄 PDF medico Health Connect</button>
             <div class="hc-chart">
                 <div class="hc-chart-title">Salute · battito / SpO₂ / HRV</div>
                 <canvas id="hcHealthChart"></canvas>
@@ -707,6 +708,18 @@
             <div class="modal-title">🩺 Dettaglio Valori</div>
             <div class="modal-body" id="infoModalBody" style="margin-bottom: 25px;"></div>
             <button onclick="chiudiModal('infoModal')">Ho capito</button>
+        </div>
+    </div>
+
+    <div id="hcPdfModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">📄 Referto Health Connect</div>
+            <div class="modal-body" style="text-align:center;margin-bottom:15px;">
+                Inserisci il nome del paziente. Il PDF includerà riepilogo, grafici, tabella giornaliera e sorgente dei dati.
+            </div>
+            <input type="text" id="hcPdfNome" placeholder="es. Mario Rossi" style="margin-bottom:20px;">
+            <button class="btn-secondary" onclick="confermaHcPDF()">Scarica PDF medico</button>
+            <button style="width:100%;padding:16px;background:rgba(0,0,0,0.05);color:var(--text-dark);font-weight:800;border-radius:16px;border:none;cursor:pointer;margin-top:10px;" onclick="chiudiModal('hcPdfModal')">Annulla</button>
         </div>
     </div>
 
@@ -1476,6 +1489,198 @@
                 statusEl.style.color = '#FF9500';
                 statusEl.innerText = '📱 Archivio locale azzerato. Alcuni dati GitHub potrebbero essere ancora presenti.';
             }
+        }
+
+        function apriHcPdfModal() {
+            const root = readHealthConnectImport();
+            if (!root || !root.data) {
+                alert('Importa prima un file Health Connect.');
+                return;
+            }
+            apriModal('hcPdfModal');
+        }
+
+        function confermaHcPDF() {
+            const nome = (document.getElementById('hcPdfNome')?.value || '').trim();
+            if (!nome) {
+                alert('Inserisci il nome del paziente.');
+                return;
+            }
+            chiudiModal('hcPdfModal');
+            scaricaHcPDF(nome);
+        }
+
+        function hcStats(arr, key) {
+            const vals = (Array.isArray(arr) ? arr : []).map(x => Number(x[key])).filter(Number.isFinite);
+            if (!vals.length) return null;
+            return {
+                avg: vals.reduce((a,b)=>a+b,0)/vals.length,
+                min: Math.min(...vals),
+                max: Math.max(...vals),
+                count: vals.length
+            };
+        }
+
+        function hcCanvasWithWhiteBackground(canvas) {
+            const out = document.createElement('canvas');
+            out.width = canvas.width;
+            out.height = canvas.height;
+            const ctx = out.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0,0,out.width,out.height);
+            ctx.drawImage(canvas,0,0);
+            return out;
+        }
+
+        function hcAggregateDailyForPdf(root) {
+            const d = root.data || {};
+            const map = new Map();
+            const rowFor = (ts) => {
+                const key = hcDayKey(ts);
+                if (!map.has(key)) map.set(key,{date:key,hr:[],spo2:[],hrv:[],steps:0,sleep:[]});
+                return map.get(key);
+            };
+
+            (d.heartRate||[]).forEach(x=>{ if(x.time && Number.isFinite(Number(x.bpm))) rowFor(x.time).hr.push(Number(x.bpm)); });
+            (d.oxygenSaturation||[]).forEach(x=>{ if(x.time && Number.isFinite(Number(x.percentage))) rowFor(x.time).spo2.push(Number(x.percentage)); });
+            (d.hrv||[]).forEach(x=>{ if(x.time && Number.isFinite(Number(x.millis))) rowFor(x.time).hrv.push(Number(x.millis)); });
+            (d.steps||[]).forEach(x=>{ if(x.endTime && Number.isFinite(Number(x.count))) rowFor(x.endTime).steps += Number(x.count); });
+            (d.sleep||[]).forEach(x=>{ if(x.endTime && Number.isFinite(Number(x.minutes))) rowFor(x.endTime).sleep.push(Number(x.minutes)); });
+
+            const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+            return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
+                date:new Date(r.date+'T12:00:00').toLocaleDateString('it-IT'),
+                hr:avg(r.hr),
+                spo2:avg(r.spo2),
+                hrv:avg(r.hrv),
+                steps:r.steps || null,
+                sleep:avg(r.sleep)
+            }));
+        }
+
+        function scaricaHcPDF(nomePaziente) {
+            setTimeout(() => {
+                try {
+                    const root = readHealthConnectImport();
+                    if (!root || !root.data) throw new Error('Nessun dato Health Connect importato');
+
+                    const d = root.data;
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({unit:'mm',format:'a4'});
+                    const sources = Array.isArray(root.sources) ? root.sources : [];
+                    const generated = root.generatedAt ? new Date(root.generatedAt) : new Date();
+                    const days = Number(root.days) || 0;
+
+                    const hr = hcStats(d.heartRate,'bpm');
+                    const spo2 = hcStats(d.oxygenSaturation,'percentage');
+                    const hrv = hcStats(d.hrv,'millis');
+                    const sleep = hcStats(d.sleep,'minutes');
+
+                    const daily = hcAggregateDailyForPdf(root);
+                    const totalSteps = (d.steps||[]).reduce((sum,x)=>sum+(Number(x.count)||0),0);
+                    const uniqueStepDays = new Set((d.steps||[]).filter(x=>x.endTime).map(x=>hcDayKey(x.endTime))).size;
+                    const avgSteps = uniqueStepDays ? Math.round(totalSteps/uniqueStepDays) : null;
+
+                    doc.setFillColor(255,42,95);
+                    doc.rect(0,0,210,22,'F');
+                    doc.setTextColor(255,255,255);
+                    doc.setFontSize(18);
+                    doc.text('Heart Monitor - Report Health Connect',105,10,{align:'center'});
+                    doc.setFontSize(9);
+                    doc.text('Dati importati da dispositivo indossabile tramite Health Connect',105,16,{align:'center'});
+
+                    doc.setTextColor(30,32,38);
+                    doc.setFontSize(13);
+                    doc.text('Dati paziente',14,32);
+                    doc.setFontSize(10);
+                    doc.text('Nome e cognome: '+nomePaziente,14,39);
+                    doc.text('Report generato: '+new Date().toLocaleString('it-IT'),14,45);
+                    doc.text('Periodo importato: '+(days ? 'ultimi '+days+' giorni' : 'periodo disponibile'),14,51);
+                    doc.text('Import Health Connect: '+generated.toLocaleString('it-IT'),14,57);
+
+                    doc.setFontSize(13);
+                    doc.text('Origine dati',110,32);
+                    doc.setFontSize(10);
+                    const sourceText = sources.length ? sources.join(', ') : 'non indicata';
+                    const sourceLines = doc.splitTextToSize(sourceText,84);
+                    doc.text(sourceLines,110,39);
+
+                    doc.setFontSize(13);
+                    doc.text('Riepilogo',14,70);
+
+                    const summaryRows = [
+                        ['Battito', hr ? hr.avg.toFixed(1)+' bpm' : '--', hr ? hr.min.toFixed(0)+' / '+hr.max.toFixed(0) : '--', hr ? String(hr.count) : '0'],
+                        ['SpO2', spo2 ? spo2.avg.toFixed(1)+' %' : '--', spo2 ? spo2.min.toFixed(1)+' / '+spo2.max.toFixed(1) : '--', spo2 ? String(spo2.count) : '0'],
+                        ['HRV RMSSD', hrv ? hrv.avg.toFixed(1)+' ms' : '--', hrv ? hrv.min.toFixed(1)+' / '+hrv.max.toFixed(1) : '--', hrv ? String(hrv.count) : '0'],
+                        ['Sonno', sleep ? (sleep.avg/60).toFixed(1)+' h/sessione' : '--', sleep ? (sleep.min/60).toFixed(1)+' / '+(sleep.max/60).toFixed(1)+' h' : '--', sleep ? String(sleep.count) : '0'],
+                        ['Passi', avgSteps!=null ? avgSteps.toLocaleString('it-IT')+' media/giorno' : '--', totalSteps ? totalSteps.toLocaleString('it-IT')+' totali' : '--', uniqueStepDays ? String(uniqueStepDays)+' giorni' : '0']
+                    ];
+
+                    doc.autoTable({
+                        startY:75,
+                        head:[['Parametro','Media','Min / Max o Totale','N. dati']],
+                        body:summaryRows,
+                        theme:'grid',
+                        headStyles:{fillColor:[255,42,95],textColor:[255,255,255]},
+                        styles:{font:'helvetica',fontSize:8,halign:'center',cellPadding:2.2}
+                    });
+
+                    let y = doc.lastAutoTable.finalY + 7;
+                    const canvases = [
+                        ['Andamento salute', document.getElementById('hcHealthChart')],
+                        ['Attivita - passi giornalieri', document.getElementById('hcStepsChart')],
+                        ['Sonno - durata sessioni', document.getElementById('hcSleepChart')]
+                    ];
+
+                    for (const [title, canvas] of canvases) {
+                        if (!canvas || !canvas.width || !canvas.height) continue;
+                        if (y > 180) { doc.addPage(); y = 18; }
+                        doc.setFontSize(12); doc.setTextColor(30,32,38); doc.text(title,14,y);
+                        const white = hcCanvasWithWhiteBackground(canvas);
+                        const ratio = white.width / white.height;
+                        const w = 182;
+                        const h = Math.min(70, w/ratio);
+                        doc.addImage(white.toDataURL('image/jpeg',0.92),'JPEG',14,y+4,w,h);
+                        y += h + 12;
+                    }
+
+                    doc.addPage();
+                    doc.setFontSize(13);
+                    doc.setTextColor(30,32,38);
+                    doc.text('Riepilogo giornaliero',14,18);
+
+                    const tableBody = daily.map(r=>[
+                        r.date,
+                        r.hr!=null ? r.hr.toFixed(0) : '--',
+                        r.spo2!=null ? r.spo2.toFixed(1) : '--',
+                        r.hrv!=null ? r.hrv.toFixed(0) : '--',
+                        r.steps!=null ? Math.round(r.steps).toLocaleString('it-IT') : '--',
+                        r.sleep!=null ? (r.sleep/60).toFixed(1) : '--'
+                    ]);
+
+                    doc.autoTable({
+                        startY:23,
+                        head:[['Data','BPM','SpO2 %','HRV ms','Passi','Sonno h']],
+                        body:tableBody,
+                        theme:'striped',
+                        headStyles:{fillColor:[88,86,214],textColor:[255,255,255]},
+                        styles:{font:'helvetica',fontSize:8,halign:'center',cellPadding:2}
+                    });
+
+                    let noteY = doc.lastAutoTable.finalY + 8;
+                    if (noteY > 250) { doc.addPage(); noteY = 18; }
+                    doc.setFontSize(9);
+                    doc.setTextColor(90,95,105);
+                    const note = 'Nota: i dati di questo report provengono da Health Connect e dalla sorgente indicata sopra (es. QRing / com.app.cq.ring). Sono dati raccolti da un dispositivo indossabile e non costituiscono misurazioni cliniche o una diagnosi. Il medico deve interpretarli nel contesto clinico complessivo.';
+                    doc.text(doc.splitTextToSize(note,182),14,noteY);
+
+                    const safeName = nomePaziente.replace(/[^a-zA-Z0-9_-]+/g,'_');
+                    const date = new Date().toLocaleDateString('it-IT').replace(/\//g,'-');
+                    doc.save('Report_HealthConnect_'+safeName+'_'+date+'.pdf');
+                } catch (error) {
+                    alert('Errore nella generazione del PDF Health Connect: '+error.message);
+                }
+            },300);
         }
 
         function scaricaPDF(nomePaziente) {
