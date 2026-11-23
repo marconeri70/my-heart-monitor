@@ -631,6 +631,61 @@
             color:#8b909b;
         }
 
+
+        /* ===== V16 · R09 TREND & STATISTICS ===== */
+        .ring-trends-card{padding:22px 20px;overflow:hidden;}
+        .ring-trends-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;}
+        .ring-trends-head h2{margin:0;font-size:26px;}
+        .ring-history-count{
+            padding:7px 10px;border-radius:999px;background:#eef5ff;color:#1677d2;
+            font-size:10px;font-weight:900;white-space:nowrap;
+        }
+        .ring-period-tabs{
+            display:grid;grid-template-columns:repeat(3,1fr);gap:7px;
+            background:#f3f5f9;border-radius:17px;padding:5px;margin-bottom:14px;
+        }
+        .ring-period-btn{
+            margin:0;padding:10px 5px;border-radius:13px;background:transparent;
+            color:#7e8492;box-shadow:none;text-transform:none;letter-spacing:0;font-size:11px;
+        }
+        .ring-period-btn.active{
+            background:#fff;color:#11131a;box-shadow:0 6px 16px rgba(35,43,66,.08);
+        }
+        .ring-kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px;}
+        .ring-kpi{
+            border:1px solid rgba(18,24,40,.06);background:#f9faff;
+            border-radius:20px;padding:14px;
+        }
+        .ring-kpi span{display:block;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.9px;color:#8a909c;}
+        .ring-kpi strong{display:block;font-size:27px;line-height:1;margin-top:7px;color:#11131a;}
+        .ring-kpi small{display:block;font-size:9px;color:#9aa0aa;font-weight:800;margin-top:5px;}
+        .ring-insight-box{
+            border-radius:20px;padding:14px 15px;margin:12px 0;
+            background:linear-gradient(135deg,#fff1f5,#f4f8ff);
+            border:1px solid rgba(255,42,95,.08);
+        }
+        .ring-insight-box span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:900;color:#ff2a5f;}
+        .ring-insight-box strong{display:block;font-size:14px;line-height:1.4;margin-top:6px;color:#22252d;}
+        .ring-chart-card{
+            border-radius:22px;background:#fbfcff;border:1px solid rgba(18,24,40,.06);
+            padding:13px 9px;margin-top:10px;
+        }
+        .ring-chart-title{
+            display:flex;justify-content:space-between;align-items:center;gap:8px;
+            padding:0 5px 8px;
+        }
+        .ring-chart-title strong{font-size:12px;color:#272a32;}
+        .ring-chart-title span{font-size:9px;color:#949aa5;font-weight:800;}
+        .ring-chart-card canvas{max-height:245px;}
+        .ring-empty{
+            display:none;text-align:center;padding:18px 10px;color:#8e949f;
+            font-size:12px;font-weight:800;line-height:1.5;
+        }
+        @media(max-width:390px){
+            .ring-trends-head h2{font-size:23px;}
+            .ring-kpi strong{font-size:24px;}
+        }
+
     </style>
 </head>
 <body>
@@ -849,6 +904,51 @@
             <summary>ⓘ Informazioni sui dati del ring</summary>
             <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
         </details>
+    </div>
+
+    <div class="card ring-trends-card" id="ring-trends-card">
+        <div class="hm-section-kicker">R09 · storico personale</div>
+        <div class="ring-trends-head">
+            <h2>Trend e statistiche</h2>
+            <span id="ringHistoryCount" class="ring-history-count">0 dati</span>
+        </div>
+
+        <div class="ring-period-tabs">
+            <button class="ring-period-btn" data-days="1" onclick="setRingTrendPeriod(1)">Oggi</button>
+            <button class="ring-period-btn active" data-days="7" onclick="setRingTrendPeriod(7)">7 giorni</button>
+            <button class="ring-period-btn" data-days="30" onclick="setRingTrendPeriod(30)">30 giorni</button>
+        </div>
+
+        <div id="ringTrendEmpty" class="ring-empty">Sincronizza il R09 almeno una volta per iniziare a costruire trend e statistiche. Più sincronizzazioni nel tempo renderanno i grafici più utili.</div>
+
+        <div id="ringTrendContent">
+            <div class="ring-kpi-grid">
+                <div class="ring-kpi"><span>Battito medio</span><strong id="ringAvgHr">--</strong><small>bpm</small></div>
+                <div class="ring-kpi"><span>SpO₂ media</span><strong id="ringAvgSpo2">--</strong><small>%</small></div>
+                <div class="ring-kpi"><span>HRV media</span><strong id="ringAvgHrv">--</strong><small>ms</small></div>
+                <div class="ring-kpi"><span>Sonno medio</span><strong id="ringAvgSleep">--</strong><small>ore/notte</small></div>
+            </div>
+
+            <div class="ring-insight-box">
+                <span>Insight automatico</span>
+                <strong id="ringTrendInsight">Servono più dati per calcolare un andamento.</strong>
+            </div>
+
+            <div class="ring-chart-card">
+                <div class="ring-chart-title"><strong>Salute</strong><span>Battito · SpO₂ · HRV · Stress · Temperatura</span></div>
+                <canvas id="ringHealthChart"></canvas>
+            </div>
+
+            <div class="ring-chart-card">
+                <div class="ring-chart-title"><strong>Attività</strong><span>Passi · calorie · distanza</span></div>
+                <canvas id="ringActivityChart"></canvas>
+            </div>
+
+            <div class="ring-chart-card">
+                <div class="ring-chart-title"><strong>Sonno</strong><span>Profondo · leggero · REM · sveglio</span></div>
+                <canvas id="ringSleepChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <div class="card hm-measure-card" id="nuova-misurazione">
@@ -1466,7 +1566,243 @@
         function apriModalPDF() { if(appData.length === 0) { alert("Nessun dato da esportare!"); return; } document.getElementById('pdfNome').value = ""; apriModal('pdfModal'); }
         function confermaPDF() { const nome = document.getElementById('pdfNome').value.trim(); if(!nome) { alert("Per favore, inserisci un nome per il referto."); return; } chiudiModal('pdfModal'); scaricaPDF(nome); }
 
-        function disegnaGrafico() {
+                const RING_HISTORY_UI_KEY = 'heart_ring_history_v1';
+        let ringTrendDays = 7;
+        let ringHealthChartInstance = null;
+        let ringActivityChartInstance = null;
+        let ringSleepChartInstance = null;
+
+        function readRingHistoryUi() {
+            try {
+                const rows = JSON.parse(localStorage.getItem(RING_HISTORY_UI_KEY) || '[]');
+                return Array.isArray(rows) ? rows : [];
+            } catch (_) { return []; }
+        }
+
+        function ringValid(v) {
+            return v !== null && v !== undefined && Number.isFinite(Number(v));
+        }
+
+        function ringAverage(rows, key) {
+            const vals = rows.map(r => Number(r[key])).filter(Number.isFinite);
+            return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+        }
+
+        function ringDayKey(ts) {
+            const d = new Date(ts);
+            return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+        }
+
+        function ringShortDate(ts, includeTime = false) {
+            const d = new Date(ts);
+            if (includeTime) return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+            return d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+        }
+
+        function filterRingHistory(days) {
+            const rows = readRingHistoryUi().filter(r => r && r.timestamp && !Number.isNaN(new Date(r.timestamp).getTime()));
+            if (!days) return rows;
+            const since = Date.now() - days * 24 * 60 * 60 * 1000;
+            return rows.filter(r => new Date(r.timestamp).getTime() >= since);
+        }
+
+        function aggregateRingDays(rows) {
+            const map = new Map();
+            rows.forEach(r => {
+                const key = ringDayKey(r.timestamp);
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push(r);
+            });
+            return [...map.entries()].map(([key,list]) => {
+                const latest = [...list].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).pop();
+                return {
+                    key,
+                    timestamp: latest.timestamp,
+                    hr:ringAverage(list,'hr'),
+                    spo2:ringAverage(list,'spo2'),
+                    temperature:ringAverage(list,'temperature'),
+                    stress:ringAverage(list,'stress'),
+                    hrv:ringAverage(list,'hrv'),
+                    steps: Math.max(...list.map(r=>Number(r.steps)).filter(Number.isFinite), 0),
+                    calories: Math.max(...list.map(r=>Number(r.calories)).filter(Number.isFinite), 0),
+                    distance: Math.max(...list.map(r=>Number(r.distance)).filter(Number.isFinite), 0),
+                    sleep:ringAverage(list,'sleep'),
+                    deep:ringAverage(list,'deep'),
+                    light:ringAverage(list,'light'),
+                    rem:ringAverage(list,'rem'),
+                    awake:ringAverage(list,'awake')
+                };
+            }).sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+        }
+
+        function setRingTrendPeriod(days) {
+            ringTrendDays = days;
+            document.querySelectorAll('.ring-period-btn').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.days) === days);
+            });
+            renderRingTrends();
+        }
+        window.setRingTrendPeriod = setRingTrendPeriod;
+
+        function ringTrendInsight(rows, daily) {
+            if (!rows.length) return 'Sincronizza il R09 per iniziare a creare il tuo storico.';
+            if (rows.length < 2) return 'Primo dato salvato. Continua a sincronizzare l’anello per vedere un vero andamento.';
+
+            const half = Math.max(1, Math.floor(rows.length / 2));
+            const older = rows.slice(0, half);
+            const newer = rows.slice(half);
+
+            const parts = [];
+            const oldHr = ringAverage(older,'hr'), newHr = ringAverage(newer,'hr');
+            if (oldHr && newHr) {
+                const diff = Math.round(newHr-oldHr);
+                if (Math.abs(diff) <= 2) parts.push('Battito medio stabile');
+                else parts.push('Battito medio ' + (diff>0?'in aumento':'in calo') + ' di circa ' + Math.abs(diff) + ' bpm');
+            }
+
+            const oldHrv = ringAverage(older,'hrv'), newHrv = ringAverage(newer,'hrv');
+            if (oldHrv && newHrv) {
+                const pct = Math.round(((newHrv-oldHrv)/oldHrv)*100);
+                if (Math.abs(pct) >= 8) parts.push('HRV ' + (pct>0?'in aumento':'in calo') + ' del ' + Math.abs(pct) + '%');
+            }
+
+            const latestDaily = daily.length ? daily[daily.length-1] : null;
+            if (latestDaily && latestDaily.sleep) {
+                const hours = latestDaily.sleep/60;
+                if (hours < 6) parts.push('ultima notte sotto le 6 ore');
+                else if (hours >= 7) parts.push('ultima notte sopra le 7 ore');
+            }
+
+            return parts.length ? parts.join(' · ') + '.' : 'I dati disponibili non mostrano ancora variazioni marcate.';
+        }
+
+        function renderRingTrends() {
+            const rows = filterRingHistory(ringTrendDays);
+            const daily = aggregateRingDays(rows);
+            const count = document.getElementById('ringHistoryCount');
+            const empty = document.getElementById('ringTrendEmpty');
+            const content = document.getElementById('ringTrendContent');
+
+            if (count) count.innerText = rows.length + ' dati';
+            const hasData = rows.length > 0;
+            if (empty) empty.style.display = hasData ? 'none' : 'block';
+            if (content) content.style.display = hasData ? 'block' : 'none';
+
+            if (!hasData) {
+                [ringHealthChartInstance,ringActivityChartInstance,ringSleepChartInstance].forEach(c=>{ if(c) c.destroy(); });
+                ringHealthChartInstance=ringActivityChartInstance=ringSleepChartInstance=null;
+                return;
+            }
+
+            const avgHr = ringAverage(rows,'hr');
+            const avgSpo2 = ringAverage(rows,'spo2');
+            const avgHrv = ringAverage(rows,'hrv');
+            const sleepVals = daily.map(r=>r.sleep).filter(v=>Number.isFinite(v) && v>0);
+            const avgSleep = sleepVals.length ? sleepVals.reduce((a,b)=>a+b,0)/sleepVals.length : null;
+
+            document.getElementById('ringAvgHr').innerText = avgHr ? Math.round(avgHr) : '--';
+            document.getElementById('ringAvgSpo2').innerText = avgSpo2 ? avgSpo2.toFixed(1) : '--';
+            document.getElementById('ringAvgHrv').innerText = avgHrv ? Math.round(avgHrv) : '--';
+            document.getElementById('ringAvgSleep').innerText = avgSleep ? (avgSleep/60).toFixed(1) : '--';
+            document.getElementById('ringTrendInsight').innerText = ringTrendInsight(rows,daily);
+
+            Chart.defaults.font.family="'Nunito', sans-serif";
+            Chart.defaults.font.weight="800";
+
+            if (ringHealthChartInstance) ringHealthChartInstance.destroy();
+            if (ringActivityChartInstance) ringActivityChartInstance.destroy();
+            if (ringSleepChartInstance) ringSleepChartInstance.destroy();
+
+            const healthRows = ringTrendDays === 1 ? rows : daily;
+            const healthLabels = healthRows.map(r=>ringShortDate(r.timestamp, ringTrendDays===1));
+            const baseOptions = {
+                responsive:true,
+                interaction:{mode:'index',intersect:false},
+                plugins:{
+                    legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:12,font:{size:10}}},
+                    datalabels:{display:false},
+                    tooltip:{backgroundColor:'rgba(17,19,26,.94)',padding:10,cornerRadius:10}
+                },
+                scales:{
+                    x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:6,color:'#8E949F',font:{size:9}}},
+                    y:{grid:{color:'rgba(18,24,40,.05)'},ticks:{maxTicksLimit:5,color:'#8E949F',font:{size:9}}}
+                }
+            };
+
+            ringHealthChartInstance = new Chart(document.getElementById('ringHealthChart').getContext('2d'),{
+                type:'line',
+                data:{
+                    labels:healthLabels,
+                    datasets:[
+                        {label:'BPM',data:healthRows.map(r=>r.hr),borderColor:'#FF2A5F',backgroundColor:'rgba(255,42,95,.08)',tension:.35,pointRadius:2.5,spanGaps:true},
+                        {label:'SpO₂',data:healthRows.map(r=>r.spo2),borderColor:'#007AFF',backgroundColor:'rgba(0,122,255,.08)',tension:.35,pointRadius:2.5,spanGaps:true},
+                        {label:'HRV',data:healthRows.map(r=>r.hrv),borderColor:'#8E5CFF',backgroundColor:'rgba(142,92,255,.08)',tension:.35,pointRadius:2.5,spanGaps:true},
+                        {label:'Stress',data:healthRows.map(r=>r.stress),borderColor:'#FF9500',backgroundColor:'rgba(255,149,0,.08)',tension:.35,pointRadius:2.5,spanGaps:true},
+                        {label:'Temp °C',data:healthRows.map(r=>r.temperature),borderColor:'#34C759',backgroundColor:'rgba(52,199,89,.08)',tension:.35,pointRadius:2.5,spanGaps:true,yAxisID:'yTemp'}
+                    ]
+                },
+                options:{
+                    ...baseOptions,
+                    scales:{
+                        ...baseOptions.scales,
+                        yTemp:{position:'right',grid:{drawOnChartArea:false},ticks:{maxTicksLimit:4,color:'#34A853',font:{size:9}}}
+                    }
+                }
+            });
+
+            const labels = daily.map(r=>ringShortDate(r.timestamp));
+            ringActivityChartInstance = new Chart(document.getElementById('ringActivityChart').getContext('2d'),{
+                type:'bar',
+                data:{
+                    labels,
+                    datasets:[
+                        {label:'Passi',data:daily.map(r=>r.steps||0),backgroundColor:'#0A84FF',borderRadius:7,yAxisID:'y'},
+                        {label:'Calorie',data:daily.map(r=>r.calories||0),backgroundColor:'#FF9500',borderRadius:7,yAxisID:'y2'},
+                        {label:'Distanza km',data:daily.map(r=>(r.distance||0)/1000),backgroundColor:'#34C759',borderRadius:7,yAxisID:'y2'}
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:12,font:{size:10}}},datalabels:{display:false}},
+                    scales:{
+                        x:{stacked:false,grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:7,font:{size:9}}},
+                        y:{beginAtZero:true,grid:{color:'rgba(18,24,40,.05)'},ticks:{maxTicksLimit:5,font:{size:9}}},
+                        y2:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{maxTicksLimit:5,font:{size:9}}}
+                    }
+                }
+            });
+
+            ringSleepChartInstance = new Chart(document.getElementById('ringSleepChart').getContext('2d'),{
+                type:'bar',
+                data:{
+                    labels,
+                    datasets:[
+                        {label:'Profondo',data:daily.map(r=>r.deep||0),backgroundColor:'#5856D6',stack:'sleep'},
+                        {label:'Leggero',data:daily.map(r=>r.light||0),backgroundColor:'#8E8CF0',stack:'sleep'},
+                        {label:'REM',data:daily.map(r=>r.rem||0),backgroundColor:'#64D2FF',stack:'sleep'},
+                        {label:'Sveglio',data:daily.map(r=>r.awake||0),backgroundColor:'#C7C7CC',stack:'sleep'}
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    plugins:{
+                        legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,padding:11,font:{size:10}}},
+                        datalabels:{display:false},
+                        tooltip:{callbacks:{label:(ctx)=>ctx.dataset.label+': '+Math.round(ctx.raw||0)+' min'}}
+                    },
+                    scales:{
+                        x:{stacked:true,grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:7,font:{size:9}}},
+                        y:{stacked:true,beginAtZero:true,grid:{color:'rgba(18,24,40,.05)'},ticks:{callback:v=>Math.round(v/60)+'h',maxTicksLimit:5,font:{size:9}}}
+                    }
+                }
+            });
+        }
+        window.renderRingTrends = renderRingTrends;
+
+        window.addEventListener('ring-history-updated', renderRingTrends);
+        window.addEventListener('load', () => setTimeout(renderRingTrends, 250));
+
+function disegnaGrafico() {
             const ctx = document.getElementById('myChart').getContext('2d');
             const ctxPie = document.getElementById('pieChart').getContext('2d');
             const labels = appData.map(d => d.data.split(',')[0].substring(0,5));
