@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Heart Monitor Bridge</string>
+    <string name="permission_usage">Legge i dati salute autorizzati da Health Connect per esportarli verso Heart Monitor.</string>
+</resources>
