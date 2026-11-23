@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private var exportJson: String? = null
 
     private val permissions = setOf(
+        HealthPermission.getReadPermission(BloodPressureRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(OxygenSaturationRecord::class),
         HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
@@ -128,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         }))
 
         root.addView(text(
-            "Dati supportati: battito, SpO₂, HRV, passi, distanza, calorie e sonno. Heart Monitor mostrerà anche l’app sorgente indicata da Health Connect, utile per verificare se il dato proviene da QRing.",
+            "Dati supportati: pressione arteriosa, battito, SpO₂, HRV, passi, distanza, calorie e sonno. Heart Monitor mostrerà anche l’app sorgente indicata da Health Connect, utile per verificare la provenienza dei dati.",
             12, false
         ).apply {
             setPadding(0, dp(16), 0, 0)
@@ -182,16 +183,40 @@ class MainActivity : AppCompatActivity() {
                 val sources = linkedSetOf<String>()
 
                 val heart = JSONArray()
+                val heartSamples = mutableListOf<Triple<Instant, Long, String>>()
                 client.readRecords(ReadRecordsRequest(HeartRateRecord::class, timeFilter)).records.forEach { r ->
-                    sources += r.metadata.dataOrigin.packageName
+                    val source = r.metadata.dataOrigin.packageName
+                    sources += source
                     r.samples.forEach { sample ->
+                        heartSamples += Triple(sample.time, sample.beatsPerMinute, source)
                         heart.put(JSONObject()
                             .put("time", sample.time.toString())
                             .put("bpm", sample.beatsPerMinute)
-                            .put("source", r.metadata.dataOrigin.packageName))
+                            .put("source", source))
                     }
                 }
                 data.put("heartRate", heart)
+
+                val pressure = JSONArray()
+                client.readRecords(ReadRecordsRequest(BloodPressureRecord::class, timeFilter)).records.forEach { r ->
+                    val source = r.metadata.dataOrigin.packageName
+                    sources += source
+                    val nearestBpm = heartSamples
+                        .filter { it.third == source }
+                        .minByOrNull { kotlin.math.abs(Duration.between(it.first, r.time).toMillis()) }
+                        ?.takeIf { kotlin.math.abs(Duration.between(it.first, r.time).toMinutes()) <= 5 }
+                        ?.second
+
+                    pressure.put(JSONObject()
+                        .put("time", r.time.toString())
+                        .put("systolic", r.systolic.inMillimetersOfMercury)
+                        .put("diastolic", r.diastolic.inMillimetersOfMercury)
+                        .put("bpm", nearestBpm)
+                        .put("bodyPosition", r.bodyPosition)
+                        .put("measurementLocation", r.measurementLocation)
+                        .put("source", source))
+                }
+                data.put("bloodPressure", pressure)
 
                 val spo2 = JSONArray()
                 client.readRecords(ReadRecordsRequest(OxygenSaturationRecord::class, timeFilter)).records.forEach { r ->
@@ -271,9 +296,10 @@ class MainActivity : AppCompatActivity() {
                 root.put("data", data)
                 exportJson = root.toString(2)
 
-                val total = heart.length()+spo2.length()+hrv.length()+steps.length()+distance.length()+calories.length()+sleep.length()
+                val total = pressure.length()+heart.length()+spo2.length()+hrv.length()+steps.length()+distance.length()+calories.length()+sleep.length()
                 summary.text = buildString {
                     append("Record trovati: ").append(total).append("\n\n")
+                    append("🩺 Pressione: ").append(pressure.length()).append("\n")
                     append("❤️ Battito: ").append(heart.length()).append("\n")
                     append("🫁 SpO₂: ").append(spo2.length()).append("\n")
                     append("💓 HRV: ").append(hrv.length()).append("\n")
