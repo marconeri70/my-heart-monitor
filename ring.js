@@ -1681,12 +1681,51 @@
     };
 
     window.addEventListener('pagehide', () => {
-        // Web Bluetooth non è affidabile in background: libera subito l'anello
-        // per evitare che una vecchia scheda/PWA lo renda invisibile alla ricerca successiva.
-        try { if (ringDevice?.gatt?.connected) ringDevice.gatt.disconnect(); } catch (_) {}
+        // Non forzare più la disconnessione: se Android/Chrome mantiene la sessione BLE,
+        // l'anello resta collegato. Se il sistema sospende la PWA, proveremo a ricollegarci
+        // automaticamente alla riapertura.
     });
 
-    window.addEventListener('load', () => {
+    async function autoReconnectRememberedRing() {
+        if (!navigator.bluetooth?.getDevices) return false;
+        try {
+            const remembered = await navigator.bluetooth.getDevices();
+            if (!remembered?.length) return false;
+
+            const lastId = (() => {
+                try { return localStorage.getItem(LAST_RING_ID_KEY) || ''; }
+                catch (_) { return ''; }
+            })();
+
+            const candidate =
+                remembered.find(d => d.id === lastId) ||
+                remembered.find(d => isColmiName(d.name));
+
+            if (!candidate) return false;
+
+            setRingStatus(`Ricollegamento automatico a ${candidate.name || 'COLMI'}…`, 'info');
+            try {
+                await attachRingDevice(candidate);
+                setRingStatus(`COLMI ${candidate.name || ''} ricollegato automaticamente.`, 'success');
+                return true;
+            } catch (e) {
+                setConnectedUi(false);
+                setBusyUi(false);
+                setRingStatus('Anello autorizzato ma non raggiungibile. Tienilo vicino al telefono e tocca “Cerca e collega anello”.', 'warning');
+                return false;
+            }
+        } catch (_) {
+            return false;
+        }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!navigator.bluetooth || ringDevice?.gatt?.connected) return;
+        await autoReconnectRememberedRing();
+    });
+
+    window.addEventListener('load', async () => {
         restoreMetrics();
         if (!readRingHistory().length) saveRingHistorySnapshot('restored', true);
         loadGestureSettings();
@@ -1694,7 +1733,16 @@
         window.ringGestureNameChanged();
         setConnectedUi(false);
         setBusyUi(false);
-        if (!navigator.bluetooth) setRingStatus('Bluetooth diretto non disponibile qui. Usa Chrome/Chromium su Android tramite HTTPS.', 'warning');
-        else setRingStatus('Pronto. Chiudi QRing, collega l’anello e poi usa “Sincronizza tutto”.', 'info');
+
+        if (!navigator.bluetooth) {
+            setRingStatus('Bluetooth diretto non disponibile qui. Usa Chrome/Chromium su Android tramite HTTPS.', 'warning');
+            return;
+        }
+
+        setRingStatus('Cerco l’R09 già autorizzato…', 'info');
+        const reconnected = await autoReconnectRememberedRing();
+        if (!reconnected) {
+            setRingStatus('Pronto. Se l’anello non si ricollega da solo, chiudi QRing e usa “Cerca e collega anello”.', 'info');
+        }
     });
 })();
