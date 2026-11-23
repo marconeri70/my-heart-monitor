@@ -2,7 +2,7 @@ name: Build Heart Monitor Health Connect Bridge
 
 on:
   push:
-    branches: [ health-connect-bridge ]
+    branches: [ main, health-connect-bridge ]
     paths:
       - 'android-health-bridge/**'
       - '.github/workflows/health-connect-bridge-build.yml'
