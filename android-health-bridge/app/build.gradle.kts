@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "it.marconeri.heartmonitor.bridge"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "it.marconeri.heartmonitor.bridge"
