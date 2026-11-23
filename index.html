@@ -487,6 +487,26 @@
         }
 
 
+
+        /* ===== HEALTH CONNECT IMPORT ===== */
+        .hc-card{padding:22px 20px;}
+        .hc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+        .hc-head h2{margin:0;font-size:26px;}
+        .hc-badge{padding:7px 10px;border-radius:999px;background:#eef5ff;color:#1677d2;font-size:10px;font-weight:900;white-space:nowrap;}
+        .hc-import-box{margin-top:14px;padding:16px;border-radius:20px;background:#f8f9fd;border:1px solid rgba(18,24,40,.06);}
+        .hc-import-btn{display:block;text-align:center;padding:15px;border-radius:17px;background:linear-gradient(135deg,#007aff,#5856d6);color:#fff;font-weight:900;font-size:13px;cursor:pointer;}
+        .hc-import-btn input{display:none;}
+        .hc-status{font-size:12px;line-height:1.45;font-weight:800;color:#7e8492;margin-top:10px;text-align:center;}
+        .hc-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px;}
+        .hc-kpi{border-radius:20px;padding:14px;background:#fbfcff;border:1px solid rgba(18,24,40,.06);}
+        .hc-kpi span{display:block;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.9px;color:#8a909c;}
+        .hc-kpi strong{display:block;font-size:27px;line-height:1;margin-top:7px;color:#11131a;}
+        .hc-kpi small{display:block;font-size:9px;color:#9aa0aa;font-weight:800;margin-top:5px;}
+        .hc-sources{margin-top:12px;padding:12px 13px;border-radius:17px;background:#fff4f7;color:#6d3a49;font-size:11px;font-weight:800;line-height:1.5;}
+        .hc-chart{margin-top:12px;padding:13px 9px;border-radius:22px;background:#fbfcff;border:1px solid rgba(18,24,40,.06);}
+        .hc-chart-title{padding:0 5px 8px;font-size:11px;font-weight:900;color:#5e6470;}
+        .hc-chart canvas{max-height:230px;}
+
     </style>
 </head>
 <body>
@@ -541,6 +561,43 @@
         <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni</button>
     </div>
 
+    <div class="card hc-card" id="health-connect-card">
+        <div class="hm-section-kicker">Importazione salute</div>
+        <div class="hc-head">
+            <h2>Dati da Health Connect</h2>
+            <span id="hcBadge" class="hc-badge">Nessun import</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-light);font-weight:700;line-height:1.45;margin:8px 0 0;">Usa Heart Monitor Bridge per leggere Health Connect e importa qui il file JSON. Nessun collegamento diretto all’anello.</p>
+
+        <div class="hc-import-box">
+            <label class="hc-import-btn">⬆️ Importa file Health Connect
+                <input id="hcFileInput" type="file" accept=".json,application/json" onchange="importHealthConnectFile(event)">
+            </label>
+            <div id="hcImportStatus" class="hc-status">In attesa di un file esportato dal Bridge.</div>
+        </div>
+
+        <div id="hcContent" style="display:none;">
+            <div class="hc-kpis">
+                <div class="hc-kpi"><span>Ultimo battito</span><strong id="hcHr">--</strong><small>bpm</small></div>
+                <div class="hc-kpi"><span>Ultima SpO₂</span><strong id="hcSpo2">--</strong><small>%</small></div>
+                <div class="hc-kpi"><span>Ultima HRV</span><strong id="hcHrv">--</strong><small>ms</small></div>
+                <div class="hc-kpi"><span>Ultimo sonno</span><strong id="hcSleep">--</strong><small>ore</small></div>
+            </div>
+            <div id="hcSources" class="hc-sources"></div>
+            <div class="hc-chart">
+                <div class="hc-chart-title">Salute · battito / SpO₂ / HRV</div>
+                <canvas id="hcHealthChart"></canvas>
+            </div>
+            <div class="hc-chart">
+                <div class="hc-chart-title">Attività · passi giornalieri</div>
+                <canvas id="hcStepsChart"></canvas>
+            </div>
+            <div class="hc-chart">
+                <div class="hc-chart-title">Sonno · durata sessioni</div>
+                <canvas id="hcSleepChart"></canvas>
+            </div>
+        </div>
+    </div>
 
     <div class="card hm-measure-card" id="nuova-misurazione">
         <div class="hm-section-kicker">Registrazione manuale</div>
@@ -683,6 +740,130 @@
         let appData = []; let chartInstance = null; let pieChartInstance = null;
 
         const LOCAL_DATA_KEY = 'heart_monitor_local_measurements_v1';
+        const HEALTH_CONNECT_IMPORT_KEY = 'heart_monitor_health_connect_import_v1';
+        let hcHealthChartInstance = null;
+        let hcStepsChartInstance = null;
+        let hcSleepChartInstance = null;
+
+        function readHealthConnectImport() {
+            try {
+                const raw = localStorage.getItem(HEALTH_CONNECT_IMPORT_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) { return null; }
+        }
+
+        function hcLast(arr, timeKey='time') {
+            if (!Array.isArray(arr) || !arr.length) return null;
+            return [...arr].sort((a,b)=>new Date(a[timeKey]||a.endTime)-new Date(b[timeKey]||b.endTime)).pop();
+        }
+
+        function hcDayKey(ts) {
+            const d=new Date(ts);
+            return d.toISOString().slice(0,10);
+        }
+
+        function hcShort(ts) {
+            return new Date(ts).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+        }
+
+        function importHealthConnectFile(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const parsed = JSON.parse(reader.result);
+                    if (parsed.schema !== 'heart-monitor-health-connect-v1' || !parsed.data) throw new Error('Formato non riconosciuto');
+                    localStorage.setItem(HEALTH_CONNECT_IMPORT_KEY, JSON.stringify(parsed));
+                    document.getElementById('hcImportStatus').innerText='✅ Import completato: '+file.name;
+                    renderHealthConnectImport();
+                } catch (e) {
+                    document.getElementById('hcImportStatus').innerText='❌ File non valido: '+(e.message||e);
+                }
+            };
+            reader.readAsText(file);
+        }
+        window.importHealthConnectFile = importHealthConnectFile;
+
+        function renderHealthConnectImport() {
+            const root = readHealthConnectImport();
+            const content=document.getElementById('hcContent');
+            const badge=document.getElementById('hcBadge');
+            if (!root || !root.data) {
+                if(content) content.style.display='none';
+                if(badge) badge.innerText='Nessun import';
+                return;
+            }
+
+            const d=root.data;
+            if(content) content.style.display='block';
+            if(badge) badge.innerText='Import '+new Date(root.generatedAt).toLocaleDateString('it-IT');
+
+            const lastHr=hcLast(d.heartRate||[]);
+            const lastSpo2=hcLast(d.oxygenSaturation||[]);
+            const lastHrv=hcLast(d.hrv||[]);
+            const lastSleep=hcLast(d.sleep||[],'endTime');
+
+            document.getElementById('hcHr').innerText=lastHr?Math.round(lastHr.bpm):'--';
+            document.getElementById('hcSpo2').innerText=lastSpo2?Number(lastSpo2.percentage).toFixed(1):'--';
+            document.getElementById('hcHrv').innerText=lastHrv?Math.round(lastHrv.millis):'--';
+            document.getElementById('hcSleep').innerText=lastSleep?(Number(lastSleep.minutes)/60).toFixed(1):'--';
+
+            const sources=Array.isArray(root.sources)?root.sources:[];
+            document.getElementById('hcSources').innerText='Sorgenti Health Connect: '+(sources.length?sources.join(' · '):'non indicate');
+
+            if(hcHealthChartInstance) hcHealthChartInstance.destroy();
+            if(hcStepsChartInstance) hcStepsChartInstance.destroy();
+            if(hcSleepChartInstance) hcSleepChartInstance.destroy();
+
+            const healthRows=[];
+            (d.heartRate||[]).forEach(x=>healthRows.push({t:x.time,hr:Number(x.bpm)}));
+            (d.oxygenSaturation||[]).forEach(x=>healthRows.push({t:x.time,spo2:Number(x.percentage)}));
+            (d.hrv||[]).forEach(x=>healthRows.push({t:x.time,hrv:Number(x.millis)}));
+            const byDay=new Map();
+            healthRows.forEach(r=>{
+                const k=hcDayKey(r.t);
+                if(!byDay.has(k)) byDay.set(k,{t:r.t,hr:[],spo2:[],hrv:[]});
+                const x=byDay.get(k);
+                if(Number.isFinite(r.hr)) x.hr.push(r.hr);
+                if(Number.isFinite(r.spo2)) x.spo2.push(r.spo2);
+                if(Number.isFinite(r.hrv)) x.hrv.push(r.hrv);
+            });
+            const daily=[...byDay.values()].map(x=>({
+                t:x.t,
+                hr:x.hr.length?x.hr.reduce((a,b)=>a+b,0)/x.hr.length:null,
+                spo2:x.spo2.length?x.spo2.reduce((a,b)=>a+b,0)/x.spo2.length:null,
+                hrv:x.hrv.length?x.hrv.reduce((a,b)=>a+b,0)/x.hrv.length:null
+            })).sort((a,b)=>new Date(a.t)-new Date(b.t));
+
+            hcHealthChartInstance=new Chart(document.getElementById('hcHealthChart').getContext('2d'),{
+                type:'line',
+                data:{labels:daily.map(x=>hcShort(x.t)),datasets:[
+                    {label:'BPM',data:daily.map(x=>x.hr),borderColor:'#FF2A5F',tension:.35,spanGaps:true,pointRadius:2.5},
+                    {label:'SpO₂',data:daily.map(x=>x.spo2),borderColor:'#007AFF',tension:.35,spanGaps:true,pointRadius:2.5},
+                    {label:'HRV',data:daily.map(x=>x.hrv),borderColor:'#8E5CFF',tension:.35,spanGaps:true,pointRadius:2.5}
+                ]},
+                options:{responsive:true,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,font:{size:10}}},datalabels:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(18,24,40,.05)'}}}}
+            });
+
+            const stepMap=new Map();
+            (d.steps||[]).forEach(x=>{const k=hcDayKey(x.endTime);stepMap.set(k,(stepMap.get(k)||0)+Number(x.count||0));});
+            const stepRows=[...stepMap.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+            hcStepsChartInstance=new Chart(document.getElementById('hcStepsChart').getContext('2d'),{
+                type:'bar',
+                data:{labels:stepRows.map(x=>hcShort(x[0])),datasets:[{label:'Passi',data:stepRows.map(x=>x[1]),backgroundColor:'#0A84FF',borderRadius:7}]},
+                options:{responsive:true,plugins:{legend:{display:false},datalabels:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(18,24,40,.05)'}}}}
+            });
+
+            const sleepRows=(d.sleep||[]).map(x=>({t:x.endTime,minutes:Number(x.minutes||0)})).sort((a,b)=>new Date(a.t)-new Date(b.t));
+            hcSleepChartInstance=new Chart(document.getElementById('hcSleepChart').getContext('2d'),{
+                type:'bar',
+                data:{labels:sleepRows.map(x=>hcShort(x.t)),datasets:[{label:'Ore di sonno',data:sleepRows.map(x=>x.minutes/60),backgroundColor:'#5856D6',borderRadius:7}]},
+                options:{responsive:true,plugins:{legend:{display:false},datalabels:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'rgba(18,24,40,.05)'}}}}
+            });
+        }
+        window.renderHealthConnectImport = renderHealthConnectImport;
+
 
         function leggiMisurazioniLocali() {
             try {
@@ -931,6 +1112,7 @@
             if (!token) document.getElementById('config-card').style.display = 'block';
 
             caricaStorico();
+            renderHealthConnectImport();
             if (navigator.onLine && token) sincronizzaMisurazioniInSospeso().then(() => caricaStorico(false));
         };
 
