@@ -578,6 +578,7 @@
 
         <div id="hcContent" style="display:none;">
             <div class="hc-kpis">
+                <div class="hc-kpi"><span>Ultima pressione</span><strong id="hcBp">--</strong><small>mmHg</small></div>
                 <div class="hc-kpi"><span>Ultimo battito</span><strong id="hcHr">--</strong><small>bpm</small></div>
                 <div class="hc-kpi"><span>Ultima SpO₂</span><strong id="hcSpo2">--</strong><small>%</small></div>
                 <div class="hc-kpi"><span>Ultima HRV</span><strong id="hcHrv">--</strong><small>ms</small></div>
@@ -788,8 +789,10 @@
                     const parsed = JSON.parse(reader.result);
                     if (parsed.schema !== 'heart-monitor-health-connect-v1' || !parsed.data) throw new Error('Formato non riconosciuto');
                     localStorage.setItem(HEALTH_CONNECT_IMPORT_KEY, JSON.stringify(parsed));
-                    document.getElementById('hcImportStatus').innerText='✅ Import completato: '+file.name;
+                    const importedBp = importBloodPressureFromHealthConnect(parsed);
+                    document.getElementById('hcImportStatus').innerText='✅ Import completato: '+file.name+(importedBp ? ' · '+importedBp+' pressioni aggiunte all’archivio' : '');
                     renderHealthConnectImport();
+                    caricaStorico(false);
                 } catch (e) {
                     document.getElementById('hcImportStatus').innerText='❌ File non valido: '+(e.message||e);
                 }
@@ -797,6 +800,46 @@
             reader.readAsText(file);
         }
         window.importHealthConnectFile = importHealthConnectFile;
+
+        function importBloodPressureFromHealthConnect(root) {
+            const rows = root?.data?.bloodPressure;
+            if (!Array.isArray(rows) || !rows.length) return 0;
+
+            const local = leggiMisurazioniLocali();
+            const known = new Set(local.map(r => r.healthConnectKey).filter(Boolean));
+            let added = 0;
+
+            rows.forEach(r => {
+                const sis = Math.round(Number(r.systolic));
+                const dia = Math.round(Number(r.diastolic));
+                const bpm = Math.round(Number(r.bpm)) || 0;
+                const time = r.time ? new Date(r.time) : null;
+                if (!Number.isFinite(sis) || !Number.isFinite(dia) || !time || Number.isNaN(time.getTime())) return;
+
+                const source = String(r.source || 'health-connect');
+                const key = source + '|' + time.toISOString() + '|' + sis + '|' + dia;
+                if (known.has(key)) return;
+
+                local.push({
+                    id: 'hc-bp-' + time.getTime() + '-' + Math.random().toString(36).slice(2,7),
+                    createdAt: time.toISOString(),
+                    displayDate: time.toLocaleString('it-IT'),
+                    sis,
+                    dia,
+                    bpm,
+                    label: classificaMisurazione(sis, dia),
+                    synced: true,
+                    source: 'health-connect',
+                    healthConnectSource: source,
+                    healthConnectKey: key
+                });
+                known.add(key);
+                added++;
+            });
+
+            if (added) salvaMisurazioniLocali(local);
+            return added;
+        }
 
         function renderHealthConnectImport() {
             const root = readHealthConnectImport();
@@ -812,11 +855,13 @@
             if(content) content.style.display='block';
             if(badge) badge.innerText='Import '+new Date(root.generatedAt).toLocaleDateString('it-IT');
 
+            const lastBp=hcLast(d.bloodPressure||[]);
             const lastHr=hcLast(d.heartRate||[]);
             const lastSpo2=hcLast(d.oxygenSaturation||[]);
             const lastHrv=hcLast(d.hrv||[]);
             const lastSleep=hcLast(d.sleep||[],'endTime');
 
+            document.getElementById('hcBp').innerText=lastBp?(Math.round(lastBp.systolic)+'/'+Math.round(lastBp.diastolic)):'--';
             document.getElementById('hcHr').innerText=lastHr?Math.round(lastHr.bpm):'--';
             document.getElementById('hcSpo2').innerText=lastSpo2?Number(lastSpo2.percentage).toFixed(1):'--';
             document.getElementById('hcHrv').innerText=lastHrv?Math.round(lastHrv.millis):'--';
@@ -1571,6 +1616,8 @@
                     const generated = root.generatedAt ? new Date(root.generatedAt) : new Date();
                     const days = Number(root.days) || 0;
 
+                    const sys = hcStats(d.bloodPressure,'systolic');
+                    const dia = hcStats(d.bloodPressure,'diastolic');
                     const hr = hcStats(d.heartRate,'bpm');
                     const spo2 = hcStats(d.oxygenSaturation,'percentage');
                     const hrv = hcStats(d.hrv,'millis');
@@ -1609,6 +1656,7 @@
                     doc.text('Riepilogo',14,70);
 
                     const summaryRows = [
+                        ['Pressione', (sys&&dia) ? sys.avg.toFixed(0)+'/'+dia.avg.toFixed(0)+' mmHg' : '--', (sys&&dia) ? (sys.min.toFixed(0)+'-'+sys.max.toFixed(0)+' / '+dia.min.toFixed(0)+'-'+dia.max.toFixed(0)) : '--', sys ? String(sys.count) : '0'],
                         ['Battito', hr ? hr.avg.toFixed(1)+' bpm' : '--', hr ? hr.min.toFixed(0)+' / '+hr.max.toFixed(0) : '--', hr ? String(hr.count) : '0'],
                         ['SpO2', spo2 ? spo2.avg.toFixed(1)+' %' : '--', spo2 ? spo2.min.toFixed(1)+' / '+spo2.max.toFixed(1) : '--', spo2 ? String(spo2.count) : '0'],
                         ['HRV RMSSD', hrv ? hrv.avg.toFixed(1)+' ms' : '--', hrv ? hrv.min.toFixed(1)+' / '+hrv.max.toFixed(1) : '--', hrv ? String(hrv.count) : '0'],
