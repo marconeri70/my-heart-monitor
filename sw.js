@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v20-health-connect-import';
+const CACHE_NAME = 'heart-monitor-v21-health-pdf';
 const APP_SHELL = [
     './',
     './index.html',
