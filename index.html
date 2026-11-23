@@ -282,9 +282,10 @@
 
     <div class="card" id="config-card" style="display:none;">
         <h2>⚙️ Configurazione</h2>
-        <div class="input-group"><input type="text" id="username" placeholder="Username (es. marconeri70)"></div>
-        <div class="input-group"><input type="text" id="repo" placeholder="Repo (es. my-heart-monitor)"></div>
+        <div class="input-group"><input type="text" id="username" value="marconeri70" placeholder="Username GitHub"></div>
+        <div class="input-group"><input type="text" id="repo" value="my-heart-monitor" placeholder="Repository"></div>
         <div class="input-group"><input type="password" id="token" placeholder="Token GitHub"></div>
+        <p style="font-size:13px;color:var(--text-light);font-weight:700;margin-top:-4px;">Il token resta salvato solo su questo dispositivo e serve esclusivamente per sincronizzare l'archivio con GitHub.</p>
         <button class="btn-secondary" onclick="salvaImpostazioni()">Salva Impostazioni</button>
     </div>
 
@@ -620,7 +621,11 @@
             const token = localStorage.getItem('gh_token');
 
             if (!user || !repo || !token) {
-                return { configured: false, remaining: leggiMisurazioniLocali().filter(r => !r.synced).length };
+                return {
+                    configured: false,
+                    reason: !token ? 'token_missing' : 'config_missing',
+                    remaining: leggiMisurazioniLocali().filter(r => !r.synced).length
+                };
             }
 
             const pending = leggiMisurazioniLocali().filter(r => !r.synced);
@@ -647,6 +652,15 @@
                             githubNumber: issue.number,
                             syncedAt: new Date().toISOString()
                         });
+                        localStorage.removeItem('gh_sync_error');
+                    } else {
+                        const code = response.status;
+                        localStorage.setItem('gh_sync_error',
+                            code === 401 ? 'token_non_valido' :
+                            code === 403 ? 'permesso_negato' :
+                            'api_' + code
+                        );
+                        if (code === 401 || code === 403) break;
                     }
                 } catch (e) {
                     console.warn('Sincronizzazione rinviata', e);
@@ -655,6 +669,7 @@
 
             return {
                 configured: true,
+                reason: localStorage.getItem('gh_sync_error') || null,
                 remaining: leggiMisurazioniLocali().filter(r => !r.synced).length
             };
         }
@@ -720,10 +735,21 @@
         }
 
         window.onload = () => {
-            const user = localStorage.getItem('gh_user');
-            if (!user) document.getElementById('config-card').style.display = 'block';
+            const user = localStorage.getItem('gh_user') || 'marconeri70';
+            const repo = localStorage.getItem('gh_repo') || 'my-heart-monitor';
+            const token = localStorage.getItem('gh_token') || '';
+
+            document.getElementById('username').value = user;
+            document.getElementById('repo').value = repo;
+            document.getElementById('token').value = token;
+
+            if (!localStorage.getItem('gh_user')) localStorage.setItem('gh_user', user);
+            if (!localStorage.getItem('gh_repo')) localStorage.setItem('gh_repo', repo);
+
+            if (!token) document.getElementById('config-card').style.display = 'block';
+
             caricaStorico();
-            if (navigator.onLine) sincronizzaMisurazioniInSospeso().then(() => caricaStorico(false));
+            if (navigator.onLine && token) sincronizzaMisurazioniInSospeso().then(() => caricaStorico(false));
         };
 
         window.addEventListener('online', () => {
@@ -734,6 +760,7 @@
             localStorage.setItem('gh_user', document.getElementById('username').value.trim());
             localStorage.setItem('gh_repo', document.getElementById('repo').value.trim());
             localStorage.setItem('gh_token', document.getElementById('token').value.trim());
+            localStorage.removeItem('gh_sync_error');
             document.getElementById('config-card').style.display = 'none';
             await sincronizzaMisurazioniInSospeso();
             await caricaStorico(false);
@@ -793,6 +820,14 @@
             if (result.remaining === 0) {
                 statusEl.style.color = '#34C759';
                 statusEl.innerText = '✅ Salvato e sincronizzato!';
+            } else if (result.reason === 'token_non_valido') {
+                document.getElementById('config-card').style.display = 'block';
+                statusEl.style.color = '#FF9500';
+                statusEl.innerText = '📱 Salvato sul telefono. Token GitHub non valido o scaduto.';
+            } else if (result.reason === 'permesso_negato') {
+                document.getElementById('config-card').style.display = 'block';
+                statusEl.style.color = '#FF9500';
+                statusEl.innerText = '📱 Salvato sul telefono. Il token non ha il permesso di creare le misurazioni su GitHub.';
             } else {
                 statusEl.style.color = '#007AFF';
                 statusEl.innerText = '📱 Salvato sul telefono. Sincronizzazione GitHub in attesa.';
@@ -808,9 +843,18 @@
             const result = await sincronizzaMisurazioniInSospeso();
             await caricaStorico(false);
 
-            if (!result.configured) {
+            if (!result.configured && result.reason === 'token_missing') {
+                document.getElementById('config-card').style.display = 'block';
                 syncEl.style.color = '#007AFF';
-                syncEl.innerText = '📱 Archivio locale aggiornato. Configura GitHub per la copia cloud.';
+                syncEl.innerText = '📱 Archivio locale aggiornato. Inserisci il token GitHub per attivare la copia cloud.';
+            } else if (result.reason === 'token_non_valido') {
+                document.getElementById('config-card').style.display = 'block';
+                syncEl.style.color = '#FF9500';
+                syncEl.innerText = '⚠️ Token GitHub non valido o scaduto. I dati restano al sicuro sul telefono.';
+            } else if (result.reason === 'permesso_negato') {
+                document.getElementById('config-card').style.display = 'block';
+                syncEl.style.color = '#FF9500';
+                syncEl.innerText = '⚠️ Il token non ha permessi sufficienti sul repository. I dati restano sul telefono.';
             } else if (result.remaining > 0) {
                 syncEl.style.color = '#FF9500';
                 syncEl.innerText = `📱 Dati al sicuro sul telefono. ${result.remaining} ancora da sincronizzare.`;
