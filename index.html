@@ -265,6 +265,227 @@
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== HEART MONITOR 2026 · MEDICAL PREMIUM ===== */
+        :root{
+            --hm-ink:#11131a;
+            --hm-muted:#7e8492;
+            --hm-surface:#ffffff;
+            --hm-surface-soft:#f7f8fc;
+            --hm-line:rgba(18,24,40,.07);
+            --hm-shadow:0 18px 50px rgba(35,43,66,.10);
+            --hm-shadow-soft:0 10px 30px rgba(35,43,66,.07);
+            --hm-radius:30px;
+        }
+
+        body{
+            max-width:540px;
+            padding:12px 14px 90px;
+            background:
+                radial-gradient(circle at 15% 0%, rgba(255,42,95,.12), transparent 30%),
+                radial-gradient(circle at 95% 16%, rgba(0,122,255,.10), transparent 30%),
+                linear-gradient(180deg,#fbfbff 0%,#f4f6fb 42%,#eef1f7 100%);
+        }
+
+        .header{ margin:14px 0 20px; }
+        .header h1{ font-size:34px; color:var(--hm-ink); letter-spacing:-1.6px; }
+        .header h1::after{
+            content:"";
+            width:8px;height:8px;border-radius:50%;
+            background:linear-gradient(135deg,#ff2a5f,#ff6b8d);
+            box-shadow:0 0 0 7px rgba(255,42,95,.10);
+            margin-left:2px;
+        }
+        .ekg-monitor{ height:26px; opacity:.72; }
+
+        .card{
+            border:1px solid rgba(255,255,255,.82);
+            border-radius:var(--hm-radius);
+            box-shadow:var(--hm-shadow);
+            background:rgba(255,255,255,.88);
+            padding:24px;
+            margin-bottom:18px;
+        }
+
+        .card h2{
+            font-size:24px;
+            line-height:1.1;
+            margin:0 0 18px;
+            letter-spacing:-.6px;
+            color:var(--hm-ink);
+        }
+
+        .hm-hero{
+            position:relative;
+            overflow:hidden;
+            border-radius:34px;
+            padding:24px;
+            margin-bottom:18px;
+            background:
+                linear-gradient(145deg,rgba(17,19,26,.98),rgba(32,37,52,.96));
+            color:#fff;
+            box-shadow:0 24px 54px rgba(15,19,30,.22);
+        }
+        .hm-hero::before{
+            content:"";
+            position:absolute;
+            width:190px;height:190px;border-radius:50%;
+            right:-80px;top:-85px;
+            background:radial-gradient(circle,rgba(255,42,95,.60),rgba(255,42,95,0) 68%);
+        }
+        .hm-hero::after{
+            content:"";
+            position:absolute;
+            width:180px;height:180px;border-radius:50%;
+            left:-90px;bottom:-110px;
+            background:radial-gradient(circle,rgba(0,122,255,.45),rgba(0,122,255,0) 70%);
+        }
+        .hm-hero-top,.hm-hero-values,.hm-quick-actions,.hm-insight-row{position:relative;z-index:2;}
+        .hm-eyebrow{
+            font-size:11px;font-weight:900;text-transform:uppercase;
+            letter-spacing:1.5px;color:rgba(255,255,255,.58);
+        }
+        .hm-hero-title{
+            display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+            margin-top:8px;
+        }
+        .hm-hero-title h2{
+            color:#fff;font-size:28px;margin:0;letter-spacing:-1px;
+        }
+        .hm-sync-pill{
+            padding:8px 11px;border-radius:999px;
+            font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;
+            background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
+            white-space:nowrap;
+        }
+        .hm-sync-pill.ok{background:rgba(52,199,89,.16);color:#8ff0aa;border-color:rgba(52,199,89,.18);}
+        .hm-sync-pill.wait{background:rgba(0,122,255,.17);color:#8cc5ff;border-color:rgba(0,122,255,.20);}
+        .hm-hero-values{
+            display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:22px 0 16px;
+        }
+        .hm-value{
+            border-radius:22px;padding:14px 10px;
+            background:rgba(255,255,255,.075);
+            border:1px solid rgba(255,255,255,.08);
+            text-align:center;
+        }
+        .hm-value span{display:block;font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.52);}
+        .hm-value strong{display:block;font-size:28px;line-height:1;margin-top:7px;color:#fff;}
+        .hm-value small{font-size:9px;color:rgba(255,255,255,.5);font-weight:800;}
+        .hm-hero-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2;}
+        .hm-last-date{font-size:11px;color:rgba(255,255,255,.58);font-weight:800;}
+        .hm-status-badge{
+            border-radius:999px;padding:8px 12px;font-size:11px;font-weight:900;
+            background:rgba(255,255,255,.10);
+        }
+        .hm-status-badge.high{background:rgba(255,42,95,.20);color:#ff91aa;}
+        .hm-status-badge.normal{background:rgba(52,199,89,.18);color:#8ff0aa;}
+        .hm-status-badge.low{background:rgba(255,149,0,.20);color:#ffc26a;}
+
+        .hm-quick-actions{
+            display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px;
+        }
+        .hm-quick{
+            border:0;margin:0;padding:12px 4px;border-radius:18px;
+            background:rgba(255,255,255,.085);box-shadow:none;
+            color:#fff;font-size:10px;font-weight:900;text-transform:none;letter-spacing:0;
+        }
+        .hm-quick:hover,.hm-quick:active{transform:none;box-shadow:none;background:rgba(255,255,255,.14);}
+        .hm-quick b{display:block;font-size:19px;margin-bottom:4px;}
+
+        .hm-insight-row{
+            display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;
+        }
+        .hm-insight{
+            border-radius:24px;padding:16px;
+            background:rgba(255,255,255,.82);
+            border:1px solid rgba(255,255,255,.9);
+            box-shadow:var(--hm-shadow-soft);
+        }
+        .hm-insight span{display:block;font-size:10px;color:var(--hm-muted);text-transform:uppercase;letter-spacing:1px;font-weight:900;}
+        .hm-insight strong{display:block;margin-top:7px;font-size:16px;line-height:1.25;color:var(--hm-ink);}
+        .hm-insight.accent{background:linear-gradient(145deg,#fff0f4,#fff);}
+
+        .hm-measure-card{position:relative;overflow:hidden;}
+        .hm-measure-card::before{
+            content:"";position:absolute;left:0;right:0;top:0;height:5px;
+            background:linear-gradient(90deg,#ff2a5f,#ff6b8d,#6b7cff,#007aff);
+        }
+        .hm-section-kicker{font-size:10px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;color:var(--primary);margin-bottom:8px;}
+        .hm-measure-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .hm-measure-card input{
+            min-height:72px;border-radius:22px;background:#f8f9fd;
+            font-size:27px;text-align:center;border:1px solid rgba(18,24,40,.05);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+        }
+        .hm-measure-card input:focus{background:#fff;transform:none;}
+        .hm-save-btn{
+            min-height:64px;border-radius:22px;margin-top:6px;
+            background:linear-gradient(135deg,#ff2a5f 0%,#ff4e7a 48%,#ff6a8d 100%);
+            box-shadow:0 16px 34px rgba(255,42,95,.28);
+            font-size:17px;
+        }
+        #status{
+            margin-top:12px;padding:0 8px;text-align:center;
+            font-size:13px;font-weight:900;line-height:1.35;
+        }
+
+        .hm-analysis-card .grid-2{grid-template-columns:repeat(2,1fr);}
+        .hm-stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+        .hm-stat{
+            border-radius:22px;padding:16px 12px;background:#f8f9fd;
+            border:1px solid var(--hm-line);text-align:left;
+        }
+        .hm-stat span{font-size:9px;color:var(--hm-muted);font-weight:900;text-transform:uppercase;letter-spacing:1px;}
+        .hm-stat strong{display:block;font-size:30px;color:var(--hm-ink);margin-top:7px;line-height:1;}
+        .hm-stat small{font-size:10px;color:var(--hm-muted);font-weight:800;}
+        .hm-chart-shell{
+            border-radius:24px;background:#fbfcff;border:1px solid var(--hm-line);
+            padding:14px 10px;margin-top:12px;
+        }
+        .chart-title{font-size:11px;letter-spacing:1.5px;color:var(--hm-muted);margin:4px 0 10px;}
+
+        .hm-archive-card .archive-actions{
+            display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;
+        }
+        .hm-archive-card .archive-actions button{
+            margin:0;padding:13px 8px;border-radius:17px;font-size:11px;letter-spacing:.2px;
+        }
+        .hm-archive-card .archive-actions .soft{
+            background:#f1f5ff;color:#176fd1;box-shadow:none;
+        }
+        .hm-archive-card .archive-actions .dark{
+            background:#161922;color:#fff;box-shadow:0 12px 22px rgba(17,19,26,.18);
+        }
+        .hm-archive-summary{
+            display:flex;align-items:center;justify-content:space-between;gap:10px;
+            background:#f8f9fd;border-radius:18px;padding:13px 14px;border:1px solid var(--hm-line);
+        }
+        .hm-archive-summary span{font-size:11px;color:var(--hm-muted);font-weight:800;}
+        .hm-archive-summary strong{font-size:13px;color:var(--hm-ink);}
+
+        .report-item{
+            border-radius:22px!important;
+            border:1px solid rgba(18,24,40,.06)!important;
+            box-shadow:0 10px 24px rgba(35,43,66,.06)!important;
+            background:#fff!important;
+            margin-bottom:12px!important;
+        }
+
+        .stats-box{
+            border-radius:22px!important;
+            background:#f8f9fd!important;
+            border:1px solid var(--hm-line)!important;
+            box-shadow:none!important;
+        }
+
+        @media(max-width:390px){
+            .hm-hero-values{gap:7px;}
+            .hm-value strong{font-size:24px;}
+            .hm-quick-actions{grid-template-columns:repeat(2,1fr);}
+            .hm-insight-row{grid-template-columns:1fr;}
+        }
+
     </style>
 </head>
 <body>
@@ -278,6 +499,36 @@
             <div class="ekg-line"></div>
             <div class="ekg-line-glow"></div>
         </div>
+    </div>
+
+    <section class="hm-hero" id="hmDashboard">
+        <div class="hm-hero-top">
+            <div class="hm-eyebrow">Riepilogo personale</div>
+            <div class="hm-hero-title">
+                <h2>La tua pressione</h2>
+                <span id="hmSyncBadge" class="hm-sync-pill wait">Solo telefono</span>
+            </div>
+        </div>
+        <div class="hm-hero-values">
+            <div class="hm-value"><span>MAX</span><strong id="hmLastMax">--</strong><small>mmHg</small></div>
+            <div class="hm-value"><span>MIN</span><strong id="hmLastMin">--</strong><small>mmHg</small></div>
+            <div class="hm-value"><span>BPM</span><strong id="hmLastBpm">--</strong><small>battiti/min</small></div>
+        </div>
+        <div class="hm-hero-footer">
+            <span id="hmLastDate" class="hm-last-date">Nessuna misurazione</span>
+            <span id="hmLastStatus" class="hm-status-badge">--</span>
+        </div>
+        <div class="hm-quick-actions">
+            <button class="hm-quick" onclick="document.getElementById('sis').scrollIntoView({behavior:'smooth',block:'center'})"><b>＋</b>Misura</button>
+            <button class="hm-quick" onclick="apriModal('storicoModal')"><b>▤</b>Archivio</button>
+            <button class="hm-quick" onclick="sincronizzaConFeedback()"><b>↻</b>Sync</button>
+            <button class="hm-quick" onclick="apriModalPDF()"><b>⇩</b>PDF</button>
+        </div>
+    </section>
+
+    <div class="hm-insight-row">
+        <div class="hm-insight accent"><span>Insight</span><strong id="hmInsightMain">Registra una misura per iniziare.</strong></div>
+        <div class="hm-insight"><span>Ultimi 7 giorni</span><strong id="hmInsightWeek">Nessun dato recente.</strong></div>
     </div>
 
     <div class="card" id="config-card" style="display:none;">
@@ -438,14 +689,15 @@
         <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
     </div>
 
-    <div class="card">
-        <h2>📝 Nuova Misurazione</h2>
-        <div class="grid-2">
-            <div class="input-group"><span class="input-label">Sistolica (MAX)</span><input type="number" id="sis" placeholder="es. 120"></div>
-            <div class="input-group"><span class="input-label">Diastolica (MIN)</span><input type="number" id="dia" placeholder="es. 80"></div>
+    <div class="card hm-measure-card" id="nuova-misurazione">
+        <div class="hm-section-kicker">Registrazione manuale</div>
+        <h2>Nuova misurazione</h2>
+        <div class="hm-measure-grid">
+            <div class="input-group"><span class="input-label">Sistolica · MAX</span><input type="number" id="sis" inputmode="numeric" placeholder="120"></div>
+            <div class="input-group"><span class="input-label">Diastolica · MIN</span><input type="number" id="dia" inputmode="numeric" placeholder="80"></div>
         </div>
-        <div class="input-group"><span class="input-label">Battiti al minuto (BPM)</span><input type="number" id="bpm" placeholder="es. 70"></div>
-        <button onclick="inviaDati()">Salva Dati</button>
+        <div class="input-group"><span class="input-label">Battiti al minuto · BPM</span><input type="number" id="bpm" inputmode="numeric" placeholder="70"></div>
+        <button class="hm-save-btn" onclick="inviaDati()">Salva misurazione</button>
         <div id="status"></div>
     </div>
 
@@ -462,32 +714,48 @@
         <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">Programma la sveglia del telefono per ricordarti di effettuare le misurazioni.</p>
     </div>
 
-    <div class="card">
-        <h2>📈 Analisi Dati</h2>
-        <div class="grid-2" id="medie-box" style="margin-bottom: 15px;">
-            <div class="stats-box"><span>Media MAX</span><div id="avg-max">-</div></div>
-            <div class="stats-box"><span>Media MIN</span><div id="avg-min">-</div></div>
+    <div class="card hm-analysis-card">
+        <div class="hm-section-kicker">Trend e statistiche</div>
+        <h2>Analisi dati</h2>
+        <div class="hm-stats-grid">
+            <div class="hm-stat"><span>Media MAX</span><strong id="avg-max">-</strong><small>mmHg</small></div>
+            <div class="hm-stat"><span>Media MIN</span><strong id="avg-min">-</strong><small>mmHg</small></div>
+            <div class="hm-stat"><span>Media BPM</span><strong id="avg-bpm">-</strong><small>battiti/min</small></div>
+            <div class="hm-stat"><span>Misurazioni</span><strong id="measure-count">0</strong><small>totali</small></div>
         </div>
-        <div class="chart-title">Andamento nel tempo</div><canvas id="myChart" style="margin-bottom: 20px;"></canvas> 
-        <div class="chart-title">Distribuzione Esiti</div>
-        <canvas id="pieChart" style="max-height: 280px; padding: 15px 10px;"></canvas> 
+        <div class="hm-chart-shell">
+            <div class="chart-title">Andamento nel tempo</div>
+            <canvas id="myChart"></canvas>
+        </div>
+        <div class="hm-chart-shell">
+            <div class="chart-title">Distribuzione esiti</div>
+            <canvas id="pieChart" style="max-height:280px;padding:8px 4px;"></canvas>
+        </div>
     </div>
 
-    <div class="card">
+    <div class="card hm-archive-card">
+        <div class="hm-section-kicker">Storico e backup</div>
         <div class="card-header-flex">
-            <h2>📋 Archivio Dati</h2>
+            <h2>Archivio dati</h2>
             <div class="dropdown">
                 <button class="menu-btn" onclick="toggleMenu(event, 'archivioMenu')">⋮</button>
                 <div id="archivioMenu" class="dropdown-content">
-                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event, 'archivioMenu')">👁️ Visualizza Misurazioni</div>
-                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event, 'archivioMenu')">🔄 Sincronizza Dati</div>
-                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event, 'archivioMenu')">📄 Scarica Referto PDF</div>
-                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event, 'archivioMenu')">🗑️ Azzera Archivio</div>
+                    <div class="dropdown-item" onclick="apriModal('storicoModal'); toggleMenu(event, 'archivioMenu')">👁️ Visualizza misurazioni</div>
+                    <div class="dropdown-item" onclick="sincronizzaConFeedback(); toggleMenu(event, 'archivioMenu')">🔄 Sincronizza dati</div>
+                    <div class="dropdown-item" onclick="apriModalPDF(); toggleMenu(event, 'archivioMenu')">📄 Scarica referto PDF</div>
+                    <div class="dropdown-item text-danger" onclick="azzeraArchivio(); toggleMenu(event, 'archivioMenu')">🗑️ Azzera archivio</div>
                 </div>
             </div>
         </div>
-        <p style="font-size: 14px; color: var(--text-light); margin-top: 0; font-weight: 600;">Visualizza lo storico, scarica il PDF o ricarica l'archivio.</p>
-        <div id="sync-status" style="font-size: 14px; font-weight: 800; color: var(--success); text-align: center; margin-top: 10px;"></div>
+        <div class="hm-archive-summary">
+            <span>Stato archivio</span>
+            <strong id="hmArchiveState">Controllo in corso…</strong>
+        </div>
+        <div class="archive-actions">
+            <button class="soft" onclick="apriModal('storicoModal')">Apri archivio</button>
+            <button class="dark" onclick="sincronizzaConFeedback()">Sincronizza</button>
+        </div>
+        <div id="sync-status" style="font-size:13px;font-weight:900;color:var(--success);text-align:center;margin-top:12px;"></div>
     </div>
 
 
@@ -689,6 +957,59 @@
             return merged;
         }
 
+        function aggiornaDashboardPremium(records) {
+            const valid = [...records].filter(r => r.max > 0 && r.min > 0).sort((a,b) => a.rawDate - b.rawDate);
+            const last = valid.length ? valid[valid.length - 1] : null;
+            const pending = leggiMisurazioniLocali().filter(r => !r.synced).length;
+
+            const syncBadge = document.getElementById('hmSyncBadge');
+            const archiveState = document.getElementById('hmArchiveState');
+
+            if (syncBadge) {
+                syncBadge.className = 'hm-sync-pill ' + (pending ? 'wait' : 'ok');
+                syncBadge.innerText = pending ? (pending + ' in attesa') : 'Sincronizzato';
+            }
+            if (archiveState) archiveState.innerText = pending ? (pending + ' misura' + (pending === 1 ? '' : 'zioni') + ' da sincronizzare') : 'Tutto sincronizzato';
+
+            if (!last) {
+                ['hmLastMax','hmLastMin','hmLastBpm'].forEach(id => { const el=document.getElementById(id); if(el) el.innerText='--'; });
+                const d=document.getElementById('hmLastDate'); if(d) d.innerText='Nessuna misurazione';
+                const st=document.getElementById('hmLastStatus'); if(st){st.innerText='--';st.className='hm-status-badge';}
+                const im=document.getElementById('hmInsightMain'); if(im) im.innerText='Registra una misura per iniziare.';
+                const iw=document.getElementById('hmInsightWeek'); if(iw) iw.innerText='Nessun dato recente.';
+                return;
+            }
+
+            document.getElementById('hmLastMax').innerText = last.max;
+            document.getElementById('hmLastMin').innerText = last.min;
+            document.getElementById('hmLastBpm').innerText = last.bpm || '--';
+            document.getElementById('hmLastDate').innerText = last.data;
+
+            const st = document.getElementById('hmLastStatus');
+            if (last.label.includes('Alta')) { st.innerText='Alta'; st.className='hm-status-badge high'; }
+            else if (last.label.includes('Bassa')) { st.innerText='Bassa'; st.className='hm-status-badge low'; }
+            else { st.innerText='Normale'; st.className='hm-status-badge normal'; }
+
+            const highCount = valid.filter(r => r.label.includes('Alta')).length;
+            const highPct = Math.round((highCount / valid.length) * 100);
+            const insight = document.getElementById('hmInsightMain');
+            if (insight) insight.innerText = highPct >= 50
+                ? highPct + '% delle misurazioni risulta sopra la soglia.'
+                : 'La maggior parte delle misurazioni non risulta alta.';
+
+            const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            const recent = valid.filter(r => r.rawDate.getTime() >= sevenDaysAgo);
+            const week = document.getElementById('hmInsightWeek');
+            if (week) {
+                if (!recent.length) week.innerText='Nessun dato negli ultimi 7 giorni.';
+                else {
+                    const avgMax = Math.round(recent.reduce((a,r)=>a+r.max,0)/recent.length);
+                    const avgMin = Math.round(recent.reduce((a,r)=>a+r.min,0)/recent.length);
+                    week.innerText = 'Media ' + avgMax + '/' + avgMin + ' su ' + recent.length + ' misurazioni.';
+                }
+            }
+        }
+
         function renderStorico(records) {
             const listaEl = document.getElementById('lista-storico');
             appData = records.filter(r => r.max > 0 && r.min > 0).sort((a,b) => a.rawDate - b.rawDate);
@@ -731,6 +1052,12 @@
             listaEl.innerHTML = htmlContent;
             document.getElementById('avg-max').innerText = Math.round(sumMax / appData.length);
             document.getElementById('avg-min').innerText = Math.round(sumMin / appData.length);
+            const avgBpmEl = document.getElementById('avg-bpm');
+            const countEl = document.getElementById('measure-count');
+            const bpmRows = appData.filter(r => r.bpm > 0);
+            if (avgBpmEl) avgBpmEl.innerText = bpmRows.length ? Math.round(bpmRows.reduce((a,r)=>a+r.bpm,0)/bpmRows.length) : '-';
+            if (countEl) countEl.innerText = appData.length;
+            aggiornaDashboardPremium(appData);
             disegnaGrafico();
         }
 
@@ -978,12 +1305,12 @@
             if(chartInstance) chartInstance.destroy(); if(pieChartInstance) pieChartInstance.destroy();
             Chart.defaults.font.family = "'Nunito', sans-serif"; Chart.defaults.font.weight = "800";
             
-            chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Sistolica (MAX)', data: dataMax, borderColor: '#FF2A5F', backgroundColor: 'rgba(255, 42, 95, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#FF2A5F', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'}, { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#007AFF', backgroundColor: 'rgba(0, 122, 255, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#007AFF', pointRadius: 5, pointBorderWidth: 2, pointBorderColor: '#fff'} ] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, datalabels: { display: false } }, scales: { y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }, x: { grid: { display: false, drawBorder: false } } } } });
+            chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Sistolica (MAX)', data: dataMax, borderColor: '#FF2A5F', backgroundColor: 'rgba(255, 42, 95, 0.1)', tension: 0.36, fill: true, pointBackgroundColor: '#FF2A5F', pointRadius: 4, pointBorderWidth: 2, pointBorderColor: '#fff'}, { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#007AFF', backgroundColor: 'rgba(0, 122, 255, 0.1)', tension: 0.36, fill: true, pointBackgroundColor: '#007AFF', pointRadius: 4, pointBorderWidth: 2, pointBorderColor: '#fff'} ] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, datalabels: { display: false } }, scales: { y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }, x: { grid: { display: false, drawBorder: false } } } } });
             
             let countAlta = 0, countNormale = 0, countBassa = 0; appData.forEach(d => { if(d.label.includes('Alta')) countAlta++; else if(d.label.includes('Bassa')) countBassa++; else countNormale++; });
             
             pieChartInstance = new Chart(ctxPie, { 
-                type: 'pie', 
+                type: 'doughnut', 
                 data: { 
                     labels: ['Alta', 'Normale', 'Bassa'], 
                     datasets: [{ 
@@ -995,8 +1322,9 @@
                     }] 
                 }, 
                 options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
                     layout: { padding: { top: 10, bottom: 10 } },
                     animation: { animateScale: true, animateRotate: true, duration: 1800, easing: 'easeOutQuart' },
                     plugins: { 
