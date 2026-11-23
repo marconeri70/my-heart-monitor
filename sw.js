@@ -1,10 +1,9 @@
-const CACHE_NAME = 'heart-monitor-v18-no-ring';
+const CACHE_NAME = 'heart-monitor-v19-clean';
 const APP_SHELL = [
     './',
     './index.html',
     './icona.png',
     './manifest.json',
-    './ring.js'
 ];
 
 self.addEventListener('install', (event) => {
