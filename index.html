@@ -549,6 +549,88 @@
             .ring-metric strong{font-size:15px;}
         }
 
+
+        /* ===== V15 · FINAL POLISH ===== */
+        #ring-card .card-header-flex{
+            align-items:center;
+            gap:12px;
+        }
+        #ring-card .card-header-flex h2{
+            max-width:none;
+            flex:1;
+            margin:0;
+            line-height:1.02;
+        }
+        #ringConnectionBadge{
+            align-self:flex-start;
+            margin-top:2px;
+        }
+        .hm-ring-details summary{
+            padding:13px 15px;
+        }
+        .hm-ring-details summary span:last-child{
+            display:none;
+        }
+        .hm-ring-details summary::after{
+            content:"⌄";
+            font-size:22px;
+            line-height:1;
+            color:#0A84FF;
+            transform:translateY(-2px);
+            transition:transform .2s ease;
+        }
+        .hm-ring-details[open] summary::after{
+            content:"⌃";
+            transform:translateY(1px);
+        }
+        .ring-actions button:disabled,#ringSyncAllBtn:disabled{
+            opacity:.76!important;
+            filter:saturate(.88) brightness(1.02);
+            background:linear-gradient(135deg,#9eb6d8,#7faee8)!important;
+            color:rgba(255,255,255,.98)!important;
+        }
+        .hm-measure-card{
+            padding-bottom:18px;
+        }
+        .hm-measure-card .hm-save-btn{
+            margin-bottom:2px;
+        }
+        .hm-measure-card input::placeholder{
+            color:#aeb4c0;
+            opacity:1;
+        }
+        .hm-ring-info{
+            margin-top:10px;
+            border:1px solid rgba(18,24,40,.07);
+            border-radius:18px;
+            background:#f8f9fd;
+            overflow:hidden;
+        }
+        .hm-ring-info summary{
+            list-style:none;
+            cursor:pointer;
+            padding:12px 14px;
+            font-size:11px;
+            font-weight:900;
+            color:var(--hm-muted);
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+        }
+        .hm-ring-info summary::-webkit-details-marker{display:none;}
+        .hm-ring-info summary::after{
+            content:"⌄";
+            color:#0A84FF;
+            font-size:20px;
+        }
+        .hm-ring-info[open] summary::after{content:"⌃";}
+        .hm-ring-info .ring-note{
+            padding:0 14px 14px;
+            margin:0!important;
+            color:#8b909b;
+        }
+
     </style>
 </head>
 <body>
@@ -627,7 +709,7 @@
         </div>
 
         <details class="hm-ring-details">
-            <summary><span>🚶 Attività e sonno</span><span>Dettagli</span></summary>
+            <summary><span>🚶 Attività e sonno</span><span></span></summary>
             <div class="hm-details-body">
         <div class="ring-section-title">Attività di oggi</div>
         <div class="ring-metrics">
@@ -662,7 +744,7 @@
         <button id="ringSyncAllBtn" data-ring-action class="ring-sync-all" onclick="ringSyncAll()" disabled>✨ Sincronizza tutto</button>
 
         <details class="hm-ring-details advanced">
-            <summary><span>⚙️ Funzioni avanzate e gesti</span><span id="ringAdvancedSummary">Apri</span></summary>
+            <summary><span>⚙️ Funzioni avanzate e gesti</span><span id="ringAdvancedSummary"></span></summary>
             <div class="hm-details-body">
         <div class="ring-actions">
             <button data-ring-action class="btn-secondary" onclick="ringSyncActivitySleep()" disabled>🚶 Attività + sonno</button>
@@ -763,7 +845,10 @@
         </details>
 
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
-        <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
+        <details class="hm-ring-info">
+            <summary>ⓘ Informazioni sui dati del ring</summary>
+            <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
+        </details>
     </div>
 
     <div class="card hm-measure-card" id="nuova-misurazione">
