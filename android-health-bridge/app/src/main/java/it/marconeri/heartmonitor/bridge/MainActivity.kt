@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         status = text("Controllo Health Connect…", 15, true)
         root.addView(card(status))
 
-        root.addView(button("1 · AUTORIZZA HEALTH CONNECT") {
+        root.addView(button("1 · AUTORIZZA HEALTH CONNECT", action = {
             lifecycleScope.launch {
                 val client = getClientOrNull() ?: return@launch
                 val granted = client.permissionController.getGrantedPermissions()
@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
                     permissionLauncher.launch(permissions)
                 }
             }
-        })
+        }))
 
         root.addView(button("GESTISCI ACCESSO HEALTH CONNECT", {
             try {
@@ -112,12 +112,12 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(daysSpinner, LinearLayout.LayoutParams(-1, dp(56)))
 
-        root.addView(button("2 · LEGGI DATI") { readHealthData() })
+        root.addView(button("2 · LEGGI DATI", action = { readHealthData() }))
 
         summary = text("Nessun dato letto.", 14, false)
         root.addView(card(summary))
 
-        root.addView(button("3 · ESPORTA JSON PER HEART MONITOR") {
+        root.addView(button("3 · ESPORTA JSON PER HEART MONITOR", action = {
             val json = exportJson
             if (json == null) {
                 Toast.makeText(this, "Prima premi LEGGI DATI", Toast.LENGTH_SHORT).show()
@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
             }
             val date = java.time.LocalDate.now().toString()
             createFileLauncher.launch("heart-monitor-health-connect-$date.json")
-        })
+        }))
 
         root.addView(text(
             "Dati supportati: battito, SpO₂, HRV, passi, distanza, calorie e sonno. Heart Monitor mostrerà anche l’app sorgente indicata da Health Connect, utile per verificare se il dato proviene da QRing.",
