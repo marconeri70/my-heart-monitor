@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v16-ring-trends';
+const CACHE_NAME = 'heart-monitor-v17-auto-reconnect';
 const APP_SHELL = [
     './',
     './index.html',
