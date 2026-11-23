@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heart-monitor-v14-compact-ring';
+const CACHE_NAME = 'heart-monitor-v15-final-polish';
 const APP_SHELL = [
     './',
     './index.html',
