@@ -486,6 +486,69 @@
             .hm-insight-row{grid-template-columns:1fr;}
         }
 
+
+        /* ===== V14 · SMART RING COMPACT + REFINEMENT ===== */
+        body{padding-top:max(22px, env(safe-area-inset-top));}
+        .header{margin-top:8px;}
+        #ring-card{padding:22px 20px;}
+        #ring-card .card-header-flex{align-items:flex-start;}
+        #ring-card .card-header-flex h2{font-size:27px;max-width:68%;margin-bottom:4px;}
+        #ring-card > p:first-of-type{
+            margin:4px 0 12px!important;
+            font-size:12px!important;
+            line-height:1.45!important;
+        }
+        .ring-device-line{margin:8px 0 10px;padding:11px 12px;}
+        .ring-section-title{margin:11px 2px 6px;}
+        .ring-metrics{grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0;}
+        .ring-metric{border-radius:15px;padding:11px 5px;}
+        .ring-metric strong{font-size:16px;}
+        .ring-status{margin:8px 0;padding:9px 11px;font-size:12px;}
+        #ringConnectBtn,#ringSyncAllBtn{min-height:58px;border-radius:20px;margin:7px 0;}
+        #ringSyncAllBtn{font-size:15px;}
+        .ring-actions{gap:7px;}
+        .ring-actions button{min-height:46px;border-radius:15px;padding:10px 6px;font-size:10px;}
+        .ring-actions button:disabled,#ringSyncAllBtn:disabled{
+            opacity:.62!important;
+            filter:saturate(.72);
+            color:rgba(255,255,255,.92)!important;
+            background:linear-gradient(135deg,#aab7d3,#89afe0)!important;
+        }
+        .hm-ring-details{
+            margin:10px 0;border:1px solid rgba(18,24,40,.07);
+            border-radius:20px;background:#f9fbff;overflow:hidden;
+        }
+        .hm-ring-details summary{
+            list-style:none;cursor:pointer;padding:14px 16px;
+            display:flex;align-items:center;justify-content:space-between;gap:10px;
+            font-size:12px;font-weight:900;color:var(--hm-ink);
+        }
+        .hm-ring-details summary::-webkit-details-marker{display:none;}
+        .hm-ring-details summary::after{
+            content:"＋";font-size:18px;color:var(--secondary);font-weight:700;
+        }
+        .hm-ring-details[open] summary::after{content:"−";}
+        .hm-ring-details .hm-details-body{padding:0 12px 12px;}
+        .hm-ring-details.advanced .hm-details-body{padding-top:2px;}
+        .ring-gesture-box{margin-top:8px;}
+        .gesture-programmer{margin-top:8px;}
+        .gesture-programmer .ring-note{font-size:10px;line-height:1.4;}
+        .ring-note{font-size:10px!important;line-height:1.4;}
+        .hm-measure-card{padding:22px;}
+        .hm-measure-card h2{margin-bottom:14px;}
+        .hm-measure-grid{gap:10px;}
+        .hm-measure-card .input-group{margin-bottom:11px;}
+        .hm-measure-card input{min-height:62px;font-size:25px;}
+        .hm-save-btn{min-height:58px;margin-top:3px;}
+        .hm-chart-shell{padding:12px 8px;}
+        #myChart{max-height:250px;}
+        #pieChart{max-height:245px!important;}
+        .hm-archive-summary{padding:12px 13px;}
+        @media(max-width:390px){
+            #ring-card .card-header-flex h2{font-size:24px;}
+            .ring-metric strong{font-size:15px;}
+        }
+
     </style>
 </head>
 <body>
@@ -546,7 +609,7 @@
             <h2>💍 COLMI Smart Ring</h2>
             <span id="ringConnectionBadge" class="ring-badge">Non connesso</span>
         </div>
-        <p style="font-size: 13px; color: var(--text-light); margin: 10px 0 0; font-weight: 700;">Dashboard completa del tuo R09. Con <b>Sincronizza tutto</b> l'app prova automaticamente attività, sonno e sensori senza farti fare una misura alla volta.</p>
+        <p style="font-size: 13px; color: var(--text-light); margin: 10px 0 0; font-weight: 700;">Riepilogo rapido del tuo R09. Collega l'anello e usa <b>Sincronizza tutto</b> per aggiornare i dati principali.</p>
 
         <div class="ring-device-line">
             <span>Dispositivo <strong id="ringName">R09_D502</strong></span>
@@ -563,6 +626,9 @@
             <div class="ring-metric experimental"><span>HRV*</span><strong id="ringHrv">--</strong></div>
         </div>
 
+        <details class="hm-ring-details">
+            <summary><span>🚶 Attività e sonno</span><span>Dettagli</span></summary>
+            <div class="hm-details-body">
         <div class="ring-section-title">Attività di oggi</div>
         <div class="ring-metrics">
             <div class="ring-metric"><span>Passi</span><strong id="ringSteps">--</strong></div>
@@ -581,6 +647,10 @@
             <div class="ring-sleep-chip"><span>Sveglio</span><strong id="ringSleepAwake">--</strong></div>
         </div>
 
+
+            </div>
+        </details>
+
         <div style="font-size:11px; color:var(--text-light); text-align:right; font-weight:700;">Ultimo dato: <span id="ringLastUpdate">--</span></div>
         <div id="ringStatus" class="ring-status">Pronto.</div>
         <div id="ringProgress" class="ring-progress">
@@ -591,6 +661,9 @@
         <button id="ringConnectBtn" class="btn-secondary" onclick="ringConnect()">🔎 Cerca e collega anello</button>
         <button id="ringSyncAllBtn" data-ring-action class="ring-sync-all" onclick="ringSyncAll()" disabled>✨ Sincronizza tutto</button>
 
+        <details class="hm-ring-details advanced">
+            <summary><span>⚙️ Funzioni avanzate e gesti</span><span id="ringAdvancedSummary">Apri</span></summary>
+            <div class="hm-details-body">
         <div class="ring-actions">
             <button data-ring-action class="btn-secondary" onclick="ringSyncActivitySleep()" disabled>🚶 Attività + sonno</button>
             <button data-ring-action class="btn-secondary" onclick="ringReadBattery()" disabled>🔋 Batteria</button>
@@ -684,6 +757,10 @@
             <button class="gesture-clear" onclick="ringClearGestures()">Elimina tutti i gesti</button>
             <div class="ring-note" style="margin-top:5px;"><b>RT09 · Accelerometro solo:</b> usa il profilo alternativo <code>A1 01 02</code>, documentato come “accelerometro only” su firmware della stessa famiglia. Prima spegne tutti i flussi ottici e poi avvia solo X/Y/Z. <b>Compatibilità · LED accesi:</b> usa <code>A1 04 04</code> se il profilo RT09 non restituisce campioni. Registra ogni gesto dopo aver premuto <b>Registra gesto</b>.</div>
         </div>
+
+
+            </div>
+        </details>
 
         <button id="ringDisconnectBtn" class="ring-disconnect" onclick="ringDisconnect()" style="display:none;">Disconnetti anello</button>
         <p class="ring-note">* Temperatura, stress e HRV dipendono dal firmware. I gesti programmabili usano l’accelerometro X/Y/Z; il profilo accelerometro-only è sperimentale e dipende dalla revisione firmware. Non vengono usati i valori di pressione o glicemia stimati dall'anello. Tutti i dati del ring sono per benessere personale e non sostituiscono strumenti o valutazioni mediche.</p>
@@ -969,7 +1046,12 @@
                 syncBadge.className = 'hm-sync-pill ' + (pending ? 'wait' : 'ok');
                 syncBadge.innerText = pending ? (pending + ' in attesa') : 'Sincronizzato';
             }
-            if (archiveState) archiveState.innerText = pending ? (pending + ' misura' + (pending === 1 ? '' : 'zioni') + ' da sincronizzare') : 'Tutto sincronizzato';
+            if (archiveState) {
+                const synced = Math.max(0, valid.length - pending);
+                archiveState.innerText = pending
+                    ? (synced + ' sincronizzate · ' + pending + ' solo telefono')
+                    : (valid.length + ' sincronizzate · 0 solo telefono');
+            }
 
             if (!last) {
                 ['hmLastMax','hmLastMin','hmLastBpm'].forEach(id => { const el=document.getElementById(id); if(el) el.innerText='--'; });
@@ -1300,45 +1382,100 @@
         function confermaPDF() { const nome = document.getElementById('pdfNome').value.trim(); if(!nome) { alert("Per favore, inserisci un nome per il referto."); return; } chiudiModal('pdfModal'); scaricaPDF(nome); }
 
         function disegnaGrafico() {
-            const ctx = document.getElementById('myChart').getContext('2d'); const ctxPie = document.getElementById('pieChart').getContext('2d');
-            const labels = appData.map(d => d.data.split(',')[0].substring(0,5)); const dataMax = appData.map(d => d.max); const dataMin = appData.map(d => d.min);
-            if(chartInstance) chartInstance.destroy(); if(pieChartInstance) pieChartInstance.destroy();
-            Chart.defaults.font.family = "'Nunito', sans-serif"; Chart.defaults.font.weight = "800";
-            
-            chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Sistolica (MAX)', data: dataMax, borderColor: '#FF2A5F', backgroundColor: 'rgba(255, 42, 95, 0.1)', tension: 0.36, fill: true, pointBackgroundColor: '#FF2A5F', pointRadius: 4, pointBorderWidth: 2, pointBorderColor: '#fff'}, { label: 'Diastolica (MIN)', data: dataMin, borderColor: '#007AFF', backgroundColor: 'rgba(0, 122, 255, 0.1)', tension: 0.36, fill: true, pointBackgroundColor: '#007AFF', pointRadius: 4, pointBorderWidth: 2, pointBorderColor: '#fff'} ] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }, datalabels: { display: false } }, scales: { y: { suggestedMin: 50, suggestedMax: 160, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } }, x: { grid: { display: false, drawBorder: false } } } } });
-            
-            let countAlta = 0, countNormale = 0, countBassa = 0; appData.forEach(d => { if(d.label.includes('Alta')) countAlta++; else if(d.label.includes('Bassa')) countBassa++; else countNormale++; });
-            
-            pieChartInstance = new Chart(ctxPie, { 
-                type: 'doughnut', 
-                data: { 
-                    labels: ['Alta', 'Normale', 'Bassa'], 
-                    datasets: [{ 
-                        data: [countAlta, countNormale, countBassa], 
-                        backgroundColor: ['#FF2A5F', '#34C759', '#FF9500'], 
-                        borderWidth: 4, 
-                        borderColor: '#ffffff', 
-                        hoverOffset: 20 
-                    }] 
-                }, 
-                options: { 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '68%',
-                    layout: { padding: { top: 10, bottom: 10 } },
-                    animation: { animateScale: true, animateRotate: true, duration: 1800, easing: 'easeOutQuart' },
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 25, font: { size: 14 } } }, 
-                        datalabels: { 
-                            color: '#ffffff', font: { weight: '900', size: 18 }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 4,
-                            formatter: (value, context) => { 
-                                if (value === 0) return null; let sum = 0; 
-                                let dataArr = context.chart.data.datasets[0].data; dataArr.map(data => { sum += data; }); 
-                                return Math.round((value * 100) / sum) + "%"; 
-                            } 
-                        } 
-                    } 
-                } 
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            const labels = appData.map(d => d.data.split(',')[0].substring(0,5));
+            const dataMax = appData.map(d => d.max);
+            const dataMin = appData.map(d => d.min);
+
+            if(chartInstance) chartInstance.destroy();
+            if(pieChartInstance) pieChartInstance.destroy();
+
+            Chart.defaults.font.family = "'Nunito', sans-serif";
+            Chart.defaults.font.weight = "800";
+
+            const gradMax = ctx.createLinearGradient(0,0,0,240);
+            gradMax.addColorStop(0,'rgba(255,42,95,.20)');
+            gradMax.addColorStop(1,'rgba(255,42,95,.015)');
+            const gradMin = ctx.createLinearGradient(0,0,0,240);
+            gradMin.addColorStop(0,'rgba(0,122,255,.16)');
+            gradMin.addColorStop(1,'rgba(0,122,255,.01)');
+
+            chartInstance = new Chart(ctx, {
+                type:'line',
+                data:{
+                    labels,
+                    datasets:[
+                        {
+                            label:'Sistolica (MAX)', data:dataMax,
+                            borderColor:'#FF2A5F', backgroundColor:gradMax,
+                            tension:.36, fill:true, pointBackgroundColor:'#FF2A5F',
+                            pointRadius:3.5, pointHoverRadius:6, pointBorderWidth:2, pointBorderColor:'#fff'
+                        },
+                        {
+                            label:'Diastolica (MIN)', data:dataMin,
+                            borderColor:'#007AFF', backgroundColor:gradMin,
+                            tension:.36, fill:true, pointBackgroundColor:'#007AFF',
+                            pointRadius:3.5, pointHoverRadius:6, pointBorderWidth:2, pointBorderColor:'#fff'
+                        }
+                    ]
+                },
+                options:{
+                    responsive:true,
+                    interaction:{mode:'index',intersect:false},
+                    plugins:{
+                        legend:{position:'top',labels:{usePointStyle:true,boxWidth:8,padding:16}},
+                        datalabels:{display:false},
+                        tooltip:{backgroundColor:'rgba(17,19,26,.94)',padding:12,cornerRadius:12}
+                    },
+                    scales:{
+                        y:{
+                            suggestedMin:50,suggestedMax:160,
+                            ticks:{maxTicksLimit:5,color:'#7E8492'},
+                            grid:{color:'rgba(18,24,40,.055)',drawBorder:false}
+                        },
+                        x:{
+                            grid:{display:false,drawBorder:false},
+                            ticks:{autoSkip:true,maxTicksLimit:7,maxRotation:45,minRotation:45,color:'#7E8492'}
+                        }
+                    }
+                }
+            });
+
+            let countAlta=0,countNormale=0,countBassa=0;
+            appData.forEach(d=>{
+                if(d.label.includes('Alta')) countAlta++;
+                else if(d.label.includes('Bassa')) countBassa++;
+                else countNormale++;
+            });
+
+            pieChartInstance = new Chart(ctxPie,{
+                type:'doughnut',
+                data:{
+                    labels:['Alta','Normale','Bassa'],
+                    datasets:[{
+                        data:[countAlta,countNormale,countBassa],
+                        backgroundColor:['#FF2A5F','#34C759','#FF9500'],
+                        borderWidth:5,borderColor:'#ffffff',hoverOffset:10
+                    }]
+                },
+                options:{
+                    responsive:true,maintainAspectRatio:false,cutout:'72%',
+                    layout:{padding:{top:6,bottom:6}},
+                    animation:{animateScale:true,animateRotate:true,duration:1100,easing:'easeOutQuart'},
+                    plugins:{
+                        legend:{position:'bottom',labels:{usePointStyle:true,padding:20,font:{size:13}}},
+                        datalabels:{
+                            color:'#ffffff',font:{weight:'900',size:16},
+                            textShadowColor:'rgba(0,0,0,.22)',textShadowBlur:3,
+                            formatter:(value,context)=>{
+                                if(value===0) return null;
+                                const sum=context.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+                                return Math.round((value*100)/sum)+'%';
+                            }
+                        }
+                    }
+                }
             });
         }
 
