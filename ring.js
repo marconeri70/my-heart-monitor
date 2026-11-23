@@ -80,6 +80,62 @@
     let lastRawNotificationAt = 0;
     const GESTURE_PROFILES_KEY = 'heart_ring_gesture_profiles_v5';
     const GESTURE_SETTINGS_KEY = 'heart_ring_gesture_settings_v5';
+    const RING_HISTORY_KEY = 'heart_ring_history_v1';
+    const RING_HISTORY_MAX = 1200;
+
+    function readRingHistory() {
+        try {
+            const rows = JSON.parse(localStorage.getItem(RING_HISTORY_KEY) || '[]');
+            return Array.isArray(rows) ? rows : [];
+        } catch (_) { return []; }
+    }
+
+    function saveRingHistorySnapshot(reason = 'update', force = false) {
+        const now = new Date();
+        const hasUseful = [metrics.hr, metrics.spo2, metrics.temperature, metrics.stress, metrics.hrv, metrics.steps, metrics.sleep]
+            .some(v => v != null && Number.isFinite(Number(v)));
+        if (!hasUseful) return null;
+
+        const rows = readRingHistory();
+        const snapshot = {
+            id: now.getTime().toString(36) + '-' + Math.random().toString(36).slice(2,7),
+            timestamp: now.toISOString(),
+            reason,
+            device: ringDevice?.name || 'R09',
+            battery: metrics.battery,
+            charging: metrics.charging,
+            hr: metrics.hr,
+            spo2: metrics.spo2,
+            temperature: metrics.temperature,
+            stress: metrics.stress,
+            hrv: metrics.hrv,
+            steps: metrics.steps,
+            calories: metrics.calories,
+            distance: metrics.distance,
+            sleep: metrics.sleep,
+            deep: metrics.deep,
+            light: metrics.light,
+            rem: metrics.rem,
+            awake: metrics.awake
+        };
+
+        const last = rows.length ? rows[rows.length - 1] : null;
+        const lastTs = last ? new Date(last.timestamp).getTime() : 0;
+        const sameReasonWindow = last && last.reason === reason && (now.getTime() - lastTs) < 60000;
+
+        if (sameReasonWindow && !force) rows[rows.length - 1] = snapshot;
+        else rows.push(snapshot);
+
+        while (rows.length > RING_HISTORY_MAX) rows.shift();
+        try { localStorage.setItem(RING_HISTORY_KEY, JSON.stringify(rows)); } catch (_) {}
+        try {
+            window.dispatchEvent(new CustomEvent('ring-history-updated', { detail: snapshot }));
+        } catch (_) {}
+        return snapshot;
+    }
+
+    window.ringGetHistory = function ringGetHistory() { return readRingHistory(); };
+    window.ringGetMetricsSnapshot = function ringGetMetricsSnapshot() { return { ...metrics }; };
 
     const metrics = {
         battery: null,
@@ -1376,6 +1432,7 @@
             } else {
                 setRingStatus('Sincronizzazione completa riuscita.', 'success');
             }
+            saveRingHistorySnapshot('sync-all', true);
         } finally {
             syncAllRunning = false;
             setBusyUi(false);
@@ -1395,7 +1452,10 @@
             if (!syncAllRunning) setRingStatus(`${cfg.label}: cerco il dato più affidabile disponibile (storico o misura diretta)…`, 'info');
             const value = await getMetricBestEffort(key);
             if (value == null) setRingStatus(`${cfg.label}: nessun dato disponibile ancora. Indossa l’anello per un po’ e riprova.`, 'warning');
-            else setRingStatus(`${cfg.label}: ${key === 'temperature' ? value.toFixed(1) : value}${cfg.unit ? ' ' + cfg.unit : ''}.`, 'success');
+            else {
+                setRingStatus(`${cfg.label}: ${key === 'temperature' ? value.toFixed(1) : value}${cfg.unit ? ' ' + cfg.unit : ''}.`, 'success');
+                saveRingHistorySnapshot('measure-' + key);
+            }
         } catch (e) {
             setRingStatus(`Errore ${cfg.label}: ${e.message || e}`, 'error');
         } finally {
@@ -1407,7 +1467,10 @@
     window.ringSyncActivitySleep = async function ringSyncActivitySleep() {
         if (!ringDevice?.gatt?.connected) { setRingStatus('Collega prima l’anello.', 'warning'); return; }
         setBusyUi(true);
-        try { await syncActivitySleep(false); } finally { setBusyUi(false); }
+        try {
+            await syncActivitySleep(false);
+            saveRingHistorySnapshot('activity-sleep');
+        } finally { setBusyUi(false); }
     };
 
     window.ringToggleGestures = async function ringToggleGestures() {
@@ -1625,6 +1688,7 @@
 
     window.addEventListener('load', () => {
         restoreMetrics();
+        if (!readRingHistory().length) saveRingHistorySnapshot('restored', true);
         loadGestureSettings();
         window.ringGestureActionChanged();
         window.ringGestureNameChanged();
